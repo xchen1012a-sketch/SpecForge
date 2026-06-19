@@ -49,17 +49,48 @@
 3. **只读业务扫描**（不改代码）：扫描代码、构建清单、Git 历史、现有文档，生成：
    - `.ai-spec/business/project-map.md`：一句话定位 + 核心域 + 主要入口 + 外部集成 + 已知风险
    - `.ai-spec/business/business-rules.discovered.md`：候选规则，每条带来源和可靠度
-4. **绝对禁止**：
+4. **规范瘦身**（基于扫描结果删除无关文件，宁可少不可乱）：
+
+   **永不删**（核心，删了规范就废了）：
+   - `AI-START.md`、`README.md`、`ai-spec.yaml`
+   - `core/`：architecture、security-standard、delivery-standard、testing-standard、command-standard、ai-workflow
+   - `business/`：全部
+   - 项目实际使用的 `adapters/<tool>/`
+   - 项目阶段对应的 `workflows/<stage>.md`
+   - `skills/`（双 Skill 模式核心）
+   - `scripts/validate.ps1`
+
+   **按项目类型删**：
+   - 纯后端 → 删 `stacks/frontend-general.md`、`stacks/mobile-general.md`、`stacks/ai-llm-app.md`
+   - 纯前端 → 删 `stacks/backend-general.md`、`stacks/mobile-general.md`、`stacks/ai-llm-app.md`、`core/data-migration-standard.md`、`core/permission-standard.md`
+   - 移动端 → 删不相关的其它 stacks
+   - 无数据库 → 删 `core/data-migration-standard.md`
+   - 无 CI → 删 `core/cicd-standard.md`
+   - 无认证/权限 → 删 `core/permission-standard.md`
+   - 非生产/无可观测需求 → 删 `core/observability.md`
+   - 无已知陷阱 → 删 `core/gotchas.md`
+
+   **按团队规模删**（个人或 ≤ 3 人小团队）：
+   - 删 `governance/rfc-template.md`、`governance/risk-register-template.md`、`governance/ownership-template.md`
+   - 保留 `governance/policy-levels.md`、`governance/exception-template.md`、`governance/handoff-template.md`、`governance/adr-template.md`
+
+   **必删**（模板自带，对具体项目无用）：
+   - `tests/`（模板自测）
+   - `scripts/install.ps1`（一次性安装器）
+   - 未使用的其它 `adapters/`（只留项目实际用的那个）
+
+5. **绝对禁止**：
    - 修改业务代码、配置、依赖、迁移、CI/CD
-   - `git commit` / `git push`（只创建分支 + 在工作区添加/修改 .ai-spec 文件）
+   - `git commit` / `git push`（只创建分支 + 在工作区添加/修改/删除 .ai-spec 文件）
    - 覆盖任何"永不覆盖"清单中的文件
-5. **完成报告**（5-8 行，越长越失败）：
+   - 删除任何"永不删"清单中的文件
+6. **完成报告**（5-8 行，越长越失败）：
 
 ```markdown
 ## 接入完成
 - 分支：chore/specforge-onboard
 - 规范文件：N 新增 / M 更新
-- 保留未覆盖：ai-spec.yaml、business-rules.md 等
+- 已瘦身：删除 K 个无关文件（如 mobile-general.md、cicd-standard.md）
 - 项目画像：[一句话定位]
 - 候选规则：X 条（已证实 Y / 待确认 Z）
 - 下一步：检查改动 → 合并或继续在分支上工作
