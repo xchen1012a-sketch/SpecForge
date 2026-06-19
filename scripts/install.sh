@@ -15,9 +15,23 @@ Usage:
   scripts/install.sh --target <project> [--tools codex,generic] [--onboard] [--sync] [--apply]
 
 Notes:
-  --sync updates core SpecForge files only and never overwrites ai-spec.yaml, business/, stacks/, or adapters/.
-  --onboard performs a safe copy baseline; advanced slimming remains implemented in scripts/install.ps1.
+  This shell script is intentionally lightweight.
+  --onboard copies the template baseline only. It does not scan projects, infer ai-spec.yaml,
+            create .specforge.json, slim unused sections, manage Git, or handle multi-project onboarding.
+  --sync updates core SpecForge files for one installed .ai-spec only. It does not sync child projects
+         from a parent .specforge.json.
+  Full onboarding/sync remains implemented in scripts/install.ps1. On macOS/Linux, use PowerShell 7:
+    pwsh -NoProfile -File ./scripts/install.ps1 -TargetRoot <project> -Onboard -Apply
 USAGE
+}
+
+warn_limitations() {
+  if [ "$ONBOARD" -eq 1 ]; then
+    echo "WARN: install.sh --onboard is lightweight baseline copy only; full scanning/slimming/profile generation is in scripts/install.ps1." >&2
+  fi
+  if [ "$SYNC" -eq 1 ]; then
+    echo "WARN: install.sh --sync updates one installed .ai-spec only; parent .specforge.json multi-project sync is in scripts/install.ps1." >&2
+  fi
 }
 
 while [ "$#" -gt 0 ]; do
@@ -59,6 +73,8 @@ if [ -z "$TARGET_ROOT" ]; then
   usage
   exit 2
 fi
+
+warn_limitations
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

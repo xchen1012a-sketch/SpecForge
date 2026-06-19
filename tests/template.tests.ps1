@@ -160,6 +160,8 @@ $readme = Read-ProjectFile 'README.md'
 Assert-True ($readme.Contains('Windsurf/Cline/Aider/Gemini 通过 adapters/generic')) 'README missing generic adapter clarification'
 Assert-True ($readme.Contains('before/after')) 'README missing before/after example'
 Assert-True ($readme.Contains('五个核心 Skill')) 'README missing five core skills note'
+Assert-True ($readme.Contains('安装器能力差异')) 'README missing installer capability matrix'
+Assert-True ($readme.Contains('PowerShell 7')) 'README missing macOS/Linux full installer guidance'
 
 $adapterReadme = Read-ProjectFile 'adapters/README.md'
 Assert-True ($adapterReadme.Contains('project-first')) 'adapters README missing project-first skill policy'
@@ -169,6 +171,8 @@ Assert-True ($adapterReadme.Contains('hybrid')) 'adapters README missing hybrid 
 $installSh = Read-ProjectFile 'scripts/install.sh'
 Assert-True ($installSh.Contains('--onboard')) 'install.sh missing onboard option'
 Assert-True ($installSh.Contains('--sync')) 'install.sh missing sync option'
+Assert-True ($installSh.Contains('intentionally lightweight')) 'install.sh missing lightweight scope warning'
+Assert-True ($installSh.Contains('Full onboarding/sync remains implemented in scripts/install.ps1')) 'install.sh missing full installer guidance'
 
 $gitAttributes = Read-ProjectFile '.gitattributes'
 Assert-True ($gitAttributes.Contains('*.sh text eol=lf')) '.gitattributes does not force LF for shell scripts'

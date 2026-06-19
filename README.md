@@ -58,6 +58,13 @@ git clone https://github.com/xchen1012a-sketch/SpecForge.git .ai-spec && rm -rf 
 
 ## 安装器
 
+安装器能力差异：
+
+| 安装器 | 定位 |
+| --- | --- |
+| `install.ps1` | 完整接入：扫描项目、生成画像、动态瘦身、多项目、同步、可选 Git 管理 |
+| `install.sh` | Mac/Linux 轻量复制：不做完整接入；需要完整流程请用 PowerShell 7 跑 `install.ps1` |
+
 安全复制，不覆盖已有文件：
 
 ```powershell
