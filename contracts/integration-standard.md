@@ -1,3 +1,10 @@
+
+---
+appliesTo: [backend, frontend, fullstack, mobile, data-platform, ai-llm, generic]
+loadWhen: [L3, integration, webhook, callback, external-system]
+fallbackTo: null
+---
+
 # 跨端联调与交接规范
 
 > 适用：前后端联调、服务间联调、第三方对接。

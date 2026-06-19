@@ -1,3 +1,10 @@
+
+---
+appliesTo: [frontend, backend, fullstack, mobile, cli, library-sdk, data-platform, ai-llm, generic]
+loadWhen: [L3, high-risk-delivery, full-delivery]
+fallbackTo: core-lite/delivery-lite.md
+---
+
 # 验证与交付规范
 
 > 每次代码修改后必须按本文件交付。**未经验证的"完成"等于没完成**。

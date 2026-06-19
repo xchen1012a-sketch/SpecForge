@@ -5,21 +5,45 @@ $testScript = Join-Path $root 'tests\template.tests.ps1'
 $installTestScript = Join-Path $root 'tests\install.tests.ps1'
 $skillTestScript = Join-Path $root 'tests\skills.tests.ps1'
 
-if (-not (Test-Path -LiteralPath $testScript -PathType Leaf)) {
-    throw 'Missing tests/template.tests.ps1'
-}
+$isTemplateRepository = (Test-Path -LiteralPath $testScript -PathType Leaf) -and
+    (Test-Path -LiteralPath $installTestScript -PathType Leaf) -and
+    (Test-Path -LiteralPath $skillTestScript -PathType Leaf)
 
-& $testScript
-& $installTestScript
-& $skillTestScript
+if ($isTemplateRepository) {
+    & $testScript
+    & $installTestScript
+    & $skillTestScript
+}
+else {
+    foreach ($requiredPath in @(
+        'AI-START.md',
+        'README.md',
+        'ai-spec.yaml',
+        'business\quick-ref.md',
+        'core\architecture.md',
+        'core\delivery-standard.md',
+        'core\security-standard.md',
+        'core-lite\delivery-lite.md',
+        'core-lite\security-lite.md',
+        'core-lite\testing-lite.md',
+        'scripts\validate.ps1'
+    )) {
+        if (-not (Test-Path -LiteralPath (Join-Path $root $requiredPath))) {
+            throw "Missing installed spec file: $requiredPath"
+        }
+    }
+    Write-Host 'Installed spec structure validation passed.' -ForegroundColor Green
+}
 
 $settingsPath = Join-Path $root 'adapters\claude-code\settings.json.template'
-try {
-    Get-Content -Raw -Encoding UTF8 -LiteralPath $settingsPath | ConvertFrom-Json | Out-Null
-}
-catch {
-    Write-Host "Invalid JSON template: $settingsPath" -ForegroundColor Red
-    throw
+if (Test-Path -LiteralPath $settingsPath -PathType Leaf) {
+    try {
+        Get-Content -Raw -Encoding UTF8 -LiteralPath $settingsPath | ConvertFrom-Json | Out-Null
+    }
+    catch {
+        Write-Host "Invalid JSON template: $settingsPath" -ForegroundColor Red
+        throw
+    }
 }
 
 $brokenLinks = [System.Collections.Generic.List[string]]::new()

@@ -1,3 +1,10 @@
+
+---
+appliesTo: [backend, fullstack]
+loadWhen: [L2, L3, backend, service, api]
+fallbackTo: core-lite/delivery-lite.md
+---
+
 # 后端通用编码规范（语言无关）
 
 > 适用任何后端（Java/Spring、Go、Node、Python、Rust、.NET）。

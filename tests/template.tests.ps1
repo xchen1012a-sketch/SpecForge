@@ -29,6 +29,10 @@ $requiredFiles = @(
     'adapters/cursor/ai-spec.mdc.template',
     'adapters/github-copilot/copilot-instructions.md.template',
     'adapters/generic/START-PROMPT.md',
+    'business/quick-ref.md',
+    'core-lite/delivery-lite.md',
+    'core-lite/security-lite.md',
+    'core-lite/testing-lite.md',
     'core/command-standard.md',
     'workflows/new-project.md',
     'workflows/existing-project.md',
@@ -66,6 +70,68 @@ Assert-True ($start.Contains('new-project')) 'AI-START.md does not route new pro
 Assert-True ($start.Contains('existing-project')) 'AI-START.md does not route existing projects'
 Assert-True ($start.Contains('in-progress-project')) 'AI-START.md does not route in-progress projects'
 Assert-True ($start.Contains('generic')) 'AI-START.md has no generic fallback'
+Assert-True ($start.Contains('上下文预算')) 'AI-START.md missing context budget protocol'
+Assert-True ($start.Contains('状态: GENERATED')) 'AI-START.md quick recovery does not require generated quick-ref status'
+Assert-True ($start.Contains('上下文使用报告')) 'AI-START.md does not require context usage reporting'
+Assert-True ($start.Contains('受控例外')) 'AI-START.md does not define controlled exceptions'
+Assert-True ($start.Contains('初始基线 commit')) 'AI-START.md does not clarify the no-Git initial commit exception'
+Assert-True ($start.Contains('quick-ref.md 是日常启动唯一入口')) 'AI-START.md does not make quick-ref the daily startup entry'
+Assert-True ($start.Contains('core-lite/delivery-lite.md')) 'AI-START.md does not route simple tasks to core-lite'
+Assert-True ($start.Contains('projectSize')) 'AI-START.md missing project size routing'
+Assert-True ($start.Contains('tiny | small | medium | large | enterprise')) 'AI-START.md missing project size levels'
+Assert-True ($start.Contains('Git 提交硬性门禁')) 'AI-START.md missing hard git commit gate'
+Assert-True ($start.Contains('只提交纯代码')) 'AI-START.md missing pure-code commit rule'
+Assert-True ($start.Contains('暂存区必须检查')) 'AI-START.md missing staging-area check rule'
+foreach ($mode in @('L0 快速恢复', 'L1 机械改动', 'L2 标准改动', 'L3 高风险改动', 'L4 接入/审计')) {
+    Assert-True ($start.Contains($mode)) "AI-START.md missing context budget mode: $mode"
+}
+
+$quickRef = Read-ProjectFile 'business/quick-ref.md'
+Assert-True ($quickRef.Contains('状态: TEMPLATE_PLACEHOLDER')) 'quick-ref.md missing placeholder status marker'
+Assert-True ($quickRef.Contains('生成后改为 GENERATED')) 'quick-ref.md does not explain generated status transition'
+Assert-True ($quickRef.Contains('动态上下文门禁')) 'quick-ref.md missing dynamic context gate'
+Assert-True ($quickRef.Contains('日常启动唯一入口')) 'quick-ref.md is not documented as the daily startup entry'
+Assert-True ($quickRef.Contains('projectSize:')) 'quick-ref.md missing project size marker'
+Assert-True ($quickRef.Contains('sizeStrategy:')) 'quick-ref.md missing size-based loading strategy marker'
+
+foreach ($lite in @('core-lite/delivery-lite.md', 'core-lite/security-lite.md', 'core-lite/testing-lite.md')) {
+    $liteContent = Read-ProjectFile $lite
+    Assert-True ($liteContent.Contains('appliesTo:')) "$lite missing appliesTo frontmatter"
+    Assert-True ($liteContent.Contains('loadWhen:')) "$lite missing loadWhen frontmatter"
+}
+
+$specExample = Read-ProjectFile 'ai-spec.example.yaml'
+Assert-True ($specExample.Contains('context:')) 'ai-spec.example.yaml missing context configuration'
+Assert-True ($specExample.Contains('projectSize: auto')) 'ai-spec.example.yaml missing project size default'
+Assert-True ($specExample.Contains('projectSizeSignals:')) 'ai-spec.example.yaml missing project size signals'
+Assert-True ($specExample.Contains('quickRefStatus: TEMPLATE_PLACEHOLDER')) 'ai-spec.example.yaml missing quick-ref status default'
+
+foreach ($routedFile in @(
+    'core/delivery-standard.md',
+    'core/security-standard.md',
+    'core/testing-standard.md',
+    'contracts/api-contract-standard.md',
+    'contracts/integration-standard.md',
+    'stacks/frontend-general.md',
+    'stacks/backend-general.md'
+)) {
+    $routedContent = Read-ProjectFile $routedFile
+    $normalizedRoutedContent = $routedContent.TrimStart([char]0xFEFF, [char]0x200B, " ", "`r", "`n", "`t")
+    Assert-True ($normalizedRoutedContent.StartsWith('---')) "$routedFile missing routing frontmatter"
+    Assert-True ($routedContent.Contains('appliesTo:')) "$routedFile missing appliesTo frontmatter"
+    Assert-True ($routedContent.Contains('loadWhen:')) "$routedFile missing loadWhen frontmatter"
+    Assert-True (([regex]::Matches($routedContent, '(?m)^appliesTo:')).Count -eq 1) "$routedFile has duplicate appliesTo frontmatter"
+    Assert-True (([regex]::Matches($routedContent, '(?m)^loadWhen:')).Count -eq 1) "$routedFile has duplicate loadWhen frontmatter"
+    Assert-True (([regex]::Matches($routedContent, '(?m)^fallbackTo:')).Count -eq 1) "$routedFile has duplicate fallbackTo frontmatter"
+}
+
+$securityStandard = Read-ProjectFile 'core/security-standard.md'
+Assert-True ($securityStandard.Contains('Git 提交硬性门禁')) 'security standard missing hard git commit gate'
+Assert-True ($securityStandard.Contains('暂存区必须检查')) 'security standard missing staging-area check'
+Assert-True ($securityStandard.Contains('只提交纯代码')) 'security standard missing pure-code commit rule'
+Assert-True ($securityStandard.Contains('.env')) 'security standard missing env-file filter'
+Assert-True ($securityStandard.Contains('IDE 配置')) 'security standard missing IDE config filter'
+Assert-True ($securityStandard.Contains('构建产物')) 'security standard missing build artifact filter'
 
 foreach ($skill in @('product-architect', 'dev-implementation')) {
     $relativePath = "skills/$skill/SKILL.md"

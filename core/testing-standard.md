@@ -1,3 +1,10 @@
+
+---
+appliesTo: [frontend, backend, fullstack, mobile, cli, library-sdk, data-platform, ai-llm, generic]
+loadWhen: [L3, testing, coverage, quality-gate, ci]
+fallbackTo: core-lite/testing-lite.md
+---
+
 # 测试规范
 
 > 测试不是可选项。没有测试的代码无法安全重构，无法验证交付。

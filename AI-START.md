@@ -3,7 +3,7 @@
 > 本文件是所有 AI 开发工具的唯一强制启动入口。
 > 当用户要求”启动规范””接入 AI Spec”或要求读取本文件时，按下述协议执行。
 
-**⚡ 快速恢复（已接入项目）**：若 `business/quick-ref.md` 存在且用户当前没有说”接入规范”/”启动”/”初始化”，则**只读 quick-ref.md（30 行）**，然后跳转到 §6 上下文路由按任务加载，**无需读完本文件**。首次接入或用户明确要求时才读全文。
+**⚡ 日常快速恢复（已接入项目）**：`business/quick-ref.md 是日常启动唯一入口`。若该文件存在、文件头包含 `状态: GENERATED`，且用户当前没有说”接入规范”/”启动”/”初始化”/”完整审计”，则**只读 quick-ref.md**，按其中的“动态上下文门禁”继续加载，**无需读完本文件**。若 quick-ref 不存在或状态为 `TEMPLATE_PLACEHOLDER`，不得把占位内容当项目事实；首次接入、接入修复、完整审计或用户明确要求读取本文件时才读全文。
 
 ## 0. 核心身份
 
@@ -62,7 +62,7 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 **迁移纠正**：若 `PROJECT_ROOT` 已存在 `.ai-spec/` 但检测到 1+ 个子项目目录，说明之前误装在父目录。删除父目录的 `.ai-spec/`，按上述路由重新安装到正确的子项目目录，并在完成报告中注明"已从父目录迁移至 N 个子项目"。
 
 1. **创建接入分支**：
-   - **无 Git 仓库**：先执行 `git init && git add -A && git commit -m "chore: initial commit"`，然后从初始提交创建 `chore/specforge-onboard`。
+   - **无 Git 仓库**：允许一次**受控例外**：先执行 `git init && git add -A && git commit -m "chore: initial commit"` 形成初始基线 commit，然后从该基线创建 `chore/specforge-onboard`。此 commit 只能发生在接入前、只包含接入前已有项目文件，不得把 `.ai-spec/` 接入改动混入初始基线。
    - **有 Git 仓库**：直接从当前 HEAD 创建 `chore/specforge-onboard`（或用户指定名）。
    所有接入改动落在此分支；主分支保持干净，回退只需 `git checkout 主分支` 或删除分支。
 2. **同步规范文件到 `.ai-spec/`**：
@@ -79,6 +79,7 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
    **永不删**（核心，删了规范就废了）：
    - `AI-START.md`、`README.md`、`ai-spec.yaml`
    - `core/`：architecture、security-standard、delivery-standard、testing-standard、command-standard、ai-workflow
+   - `core-lite/`：delivery-lite、security-lite、testing-lite（日常动态省 token 入口）
    - `business/`：全部
    - 项目实际使用的 `adapters/<tool>/`
    - 项目阶段对应的 `workflows/<stage>.md`
@@ -99,7 +100,7 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 
 5. **绝对禁止**：
    - 修改、删除、移动**任何项目业务代码、配置、依赖、迁移、CI/CD 文件**（规范瘦身只作用于 `.ai-spec/` 内部）
-   - `git commit` / `git push`（只创建分支 + 在工作区添加/修改/删除 .ai-spec 文件）
+   - `git commit` / `git push`（唯一受控例外：无 Git 仓库接入时的初始基线 commit；接入 `.ai-spec/` 之后仍禁止 commit/push）
    - 覆盖任何"永不覆盖"清单中的文件
    - 删除任何"永不删"清单中的文件
 6. **完成报告**（5-8 行，越长越失败）：
@@ -211,7 +212,7 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 | `ai-spec.yaml` | 项目名 / 技术栈 / 命令 / 阶段 | 用户首次填，AI 永不修改 |
 | `business/project-map.md` | 项目定位 / 核心域 / 入口 / 集成 / 风险 | AI 实时维护 |
 | `business/business-rules.md` | 业务定位 / 域 / 状态机 / KPI / 不变量 | AI 实时维护 |
-| `business/quick-ref.md` | 核心域 / 状态机 / 不变量 / KPI 摘要（≤30 行） | AI 实时维护 |
+| `business/quick-ref.md` | 日常启动唯一入口 / 项目定位 / 核心域 / 动态上下文门禁 | AI 实时维护 |
 
 ### 规则标记（每条规则必须带，AI 自动加）
 
@@ -357,6 +358,7 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
   建议操作：添加至 `.gitignore`、生成 `config.example` 占位模板、迁移至环境变量、密钥轮换。
   风险等级：`高`（已提交至 Git 或硬编码在源码） / `中`（存在于本地未跟踪文件但可被工具读取） / `低`（已正确排除但提醒复查）。
 - 不覆盖用户未提交改动，不使用破坏性 Git 或文件命令清理现场。
+- **Git 提交硬性门禁**：在用户明确要求提交前，暂存区必须检查；只提交纯代码（源码、测试、迁移、锁文件、文档），必须过滤配置文件（`.env` / IDE 配置 / 本地设置 / 构建产物 / 真实凭证）。CI 配置文件可作为特例提交，但不得含密钥。
 - 不操作生产环境、生产数据库、真实付费资源或真实用户通信，除非用户明确授权并确认影响范围。
 - 不绕过认证、授权、数据隔离和审计逻辑以换取“先跑通”。
 - 不在未验证时声称完成，不用 mock 结果冒充真实联调。
@@ -382,18 +384,57 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 
 ## 6. 上下文路由（Context Routing）
 
-只读取当前任务所需文件：
+### 6.1 上下文预算（Token Budget）
+
+默认策略：**先低后高、按证据升级、禁止默认全量读仓库**。每次任务开始先判定上下文等级；只有命中升级条件时才读取更多规范或项目文件。
+
+动态路由同时看两个维度：任务等级 L0-L4 × `projectSize`。项目规模等级为 `tiny | small | medium | large | enterprise`，由安装器按文件数、构建文件数、多项目、API、DB、Auth、CI 等信号写入 `ai-spec.yaml` 和 `quick-ref.md`。
+
+| 等级 | 名称 | 适用场景 | 允许读取 |
+|---|---|---|---|
+| L0 | L0 快速恢复 | 已接入项目的状态确认、简单问答、无需改文件的轻量任务 | `business/quick-ref.md`（必须是 `状态: GENERATED`） |
+| L1 | L1 机械改动 | typo、注释、格式、纯常量文案、明确单文件小改；不改变行为逻辑 | quick-ref + 用户指定文件 / 搜索命中的最小片段 |
+| L2 | L2 标准改动 | 普通 Bug 修复、小功能、局部重构、需要运行验证 | L1 + `core-lite/delivery-lite.md` + 直接相关源码；按需加 `core-lite/security-lite.md` / `core-lite/testing-lite.md` |
+| L3 | L3 高风险改动 | 业务逻辑、API/事件、权限、数据、迁移、支付金额、状态机、安全边界 | L2 + 对应的 `business/`、`contracts/`、`core/permission-standard.md`、`core/data-migration-standard.md` 等 |
+| L4 | L4 接入/审计 | 接入规范、生成项目画像、全面评审、架构重构、多项目识别、用户明确要求“完整分析” | 可执行启动协议、项目结构扫描和必要规范全量读取 |
+
+| projectSize | 默认策略 | 禁止默认读取 | 升级条件 |
+|---|---|---|---|
+| tiny | ultra-lite：quick-ref + 命中文件；简单代码只加 `core-lite/delivery-lite.md` | 完整 `core/`、`business-rules.md`、`contracts/` | API/DB/Auth/业务规则变更 |
+| small | lite：quick-ref + core-lite；按模块读源码 | 完整仓库扫描、完整 `core/` | 跨模块、测试失败、业务逻辑 |
+| medium | focused：quick-ref + project-map + 相关模块 | 全量源码、全量 stacks | API/权限/数据/跨端 |
+| large | mapped：先 project-map，再定位模块和契约 | 未定位前读取大目录 | 跨模块影响或接口变更 |
+| enterprise | governed：project-map + contracts/governance 按需 | 绕过治理文档 | 合规、安全、审计、生产影响 |
+
+**升级规则**：
+
+- L0/L1 升到 L2：目标文件不明确、搜索结果不足、测试失败需要定位、改动影响多个直接依赖文件。
+- L2 升到 L3：命中 §6.2 的业务逻辑触发条件，或涉及 API、权限、数据、外部集成、安全边界。
+- L3 升到 L4：用户明确要求接入 / 初始化 / 完整审计，或当前任务无法在已读上下文中给出可靠结论。
+- 任何升级都要能说明原因；不能因为“保险起见”读取全部仓库。
+
+**读取纪律**：
+
+- 先用文件清单、`rg` 搜索和精确路径定位，再读文件内容；优先读命中片段，不直接打开大目录下全部文件。
+- 小改动不得递归阅读整个项目、全部规范、全部 `stacks/` 或全部 `business/`。
+- 默认跳过 `node_modules/`、`vendor/`、构建产物、锁文件、二进制、大日志；除非任务直接要求。
+- quick-ref 若是 `TEMPLATE_PLACEHOLDER`，只能作为“未接入完成”的信号，不能作为业务事实。
+- 最终交付必须包含一行**上下文使用报告**：`上下文：Lx；已读取：...；未读取：...；升级原因：...`。
+
+### 6.2 任务到文件路由
+
+日常任务以 `quick-ref.md` 的“动态上下文门禁”为准；本表只作为 fallback。只读取当前任务所需文件：
 
 | 任务 | 必读 |
 |---|---|
-| 任意代码修改（基础） | `core/delivery-standard.md`、`core/security-standard.md`、`core/architecture.md`、`business/quick-ref.md`（约 30 行，自动生成） |
+| 任意代码修改（基础） | `business/quick-ref.md` + `core-lite/delivery-lite.md` + 直接相关源码 |
 | 纯机械/文案改动（修 typo、改配置常量、重命名变量/文件、改注释、格式化 — 不改变任何行为逻辑） | 仅 `business/quick-ref.md`（无需加载 core/ 文件） |
-| 纯视觉/样式修复（仅当同时满足：只改 CSS 色值/间距/字号/圆角/图标/纯文案 typo；不动 JSX/HTML 结构、不动交互逻辑、不动按钮或业务术语文案、不动权限可见性） | 仅 `core/delivery-standard.md` |
-| 业务逻辑改动（触发条件见下） | 基础 + `business/business-rules.md`、`business/project-map.md` |
+| 纯视觉/样式修复（仅当同时满足：只改 CSS 色值/间距/字号/圆角/图标/纯文案 typo；不动 JSX/HTML 结构、不动交互逻辑、不动按钮或业务术语文案、不动权限可见性） | `business/quick-ref.md` + `core-lite/delivery-lite.md` |
+| 业务逻辑改动（触发条件见下） | 基础 + `business/business-rules.md`、必要时 `business/project-map.md` |
 | API/事件/跨端 | `contracts/api-contract-standard.md`、`contracts/integration-standard.md` |
 | 权限/租户/数据范围 | `core/permission-standard.md` |
 | 数据库/迁移 | `core/data-migration-standard.md` |
-| 测试/质量门禁 | `core/testing-standard.md`、`core/cicd-standard.md` |
+| 测试/质量门禁 | 简单验证读 `core-lite/testing-lite.md`；覆盖率/CI/质量门禁读 `core/testing-standard.md`、`core/cicd-standard.md` |
 | 构建、运行、测试命令 | `core/command-standard.md` |
 | 日志/监控/告警 | `core/observability.md` |
 | 构建或运行故障 | `core/gotchas.md` |

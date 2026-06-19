@@ -1,3 +1,10 @@
+
+---
+appliesTo: [backend, frontend, fullstack, mobile, ai-llm, generic]
+loadWhen: [L3, api, contract, schema, cross-boundary]
+fallbackTo: null
+---
+
 # API 接口契约规范
 
 > 适用 REST / gRPC / GraphQL / 消息队列 topic。

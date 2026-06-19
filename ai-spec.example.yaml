@@ -36,7 +36,25 @@ quality:
   securityGate: project-defined
   fullTestSuiteOnEveryChange: false
 
+context:
+  projectSize: auto # auto | tiny | small | medium | large | enterprise
+  mode: auto # auto | L0 | L1 | L2 | L3 | L4
+  dailyEntry: business/quick-ref.md
+  quickRefStatus: TEMPLATE_PLACEHOLDER # TEMPLATE_PLACEHOLDER | GENERATED
+  quickRefMaxLines: 40
+  preferLiteCore: true
+  dynamicRouting: true
+  allowFullScanByDefault: false
+  requireContextUsageReport: true
+  projectSizeSignals:
+    fileCount: 0
+    buildFileCount: 0
+    hasDatabase: false
+    hasApi: false
+    hasAuth: false
+    hasCi: false
+    multiProject: false
+
 ai:
   tools: [generic]
   specPath: .ai-spec
-

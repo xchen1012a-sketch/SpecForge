@@ -1,3 +1,10 @@
+
+---
+appliesTo: [frontend, fullstack]
+loadWhen: [L2, L3, frontend, ui, browser]
+fallbackTo: core-lite/delivery-lite.md
+---
+
 # 前端通用编码规范（框架无关）
 
 > 适用 React / Vue / Svelte / Solid / Angular。
