@@ -54,6 +54,7 @@ git clone https://github.com/xchen1012a-sketch/SpecForge.git .ai-spec && rm -rf 
 .
 ├── AI-START.md                 # 任意 AI 的唯一启动入口
 ├── README.md                   # 给人看的项目说明
+├── AI双工具全栈开发操作手册.md    # 全栈多仓库协作操作指南
 ├── ai-spec.example.yaml        # 项目画像配置示例
 ├── adapters/                   # AI 工具自动发现适配器
 ├── business/                   # 项目业务规则
