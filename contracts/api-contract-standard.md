@@ -30,7 +30,7 @@
 | 文档类型 | 路径 | 用途 |
 |---|---|---|
 | 跨前后端协作契约 | `docs/contracts/{feature}.md` | 双方对齐 |
-| 单次任务交接 | `docs/handoff-template.md` 派生 | AI 切换时 |
+| 单次任务交接 | `governance/handoff-template.md` 派生 | AI 切换时 |
 | OpenAPI / proto | `docs/openapi.yaml` / `proto/{module}.proto` | 自动生成 |
 | 运行时校验 | `/v3/api-docs`（Swagger）或 GraphQL introspection | 不能替代契约说明 |
 
@@ -72,44 +72,7 @@
 
 ## 四、响应包装（PROJECT 决策）
 
-响应是否使用统一信封必须沿用项目现有契约。标准 HTTP API、文件流、GraphQL、gRPC 和事件消息不应被机械包装。以下仅为采用业务信封时的示例。
-
-### 4.1 统一响应信封
-```json
-{
-  "code": 0,
-  "data": { ... },
-  "msg": "success"
-}
-```
-- `code = 0` 表示成功，非 0 表示业务错误
-- `data` 成功时为数据，失败时为 null
-- `msg` 成功时为提示，失败时为错误描述
-
-### 4.2 分页
-```json
-{
-  "code": 0,
-  "data": {
-    "list": [...],
-    "total": 100,
-    "page": 1,
-    "limit": 20
-  }
-}
-```
-
-### 4.3 错误信封
-```json
-{
-  "code": 40001,
-  "data": null,
-  "msg": "参数错误：邮箱格式不正确",
-  "details": [
-    { "field": "email", "issue": "invalid format" }
-  ]
-}
-```
+响应是否使用统一信封必须沿用项目现有契约。标准 HTTP API、文件流、GraphQL、gRPC 和事件消息不应被机械包装。采用业务信封时，推荐字段：`code`（状态码，0 成功 非 0 错误）、`data`（负载）、`msg`（描述）、分页增 `total`/`page`/`limit`。完整示例见 `contracts/examples/api-response-envelopes.md`。
 
 ---
 

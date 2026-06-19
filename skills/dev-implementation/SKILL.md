@@ -9,12 +9,15 @@ description: 在项目 AI 规范和已批准范围内实施新功能、缺陷修
 
 ## 启动
 
+> 假定 AI-START.md §1.5-§1.6 启动协议已完成，项目阶段和业务逻辑已识别。
+> 上下文路由按 AI-START.md §6 执行，本 Skill 不建立第二套路由规则。
+> 每次实现/修改业务逻辑时，对照 `business/business-rules.md` 检查一致性（见 AI-START.md §1.6）。
+
 1. 读取 `AI-START.md`、已批准方案和适用规范；缺失时记录缺口。
-2. 判断项目阶段、任务类型、影响边界和风险等级。
-3. 只读调查真实代码、测试、配置、契约、数据、权限、Git 状态和相似实现。
-4. 识别 project-native 构建、分层、命名、错误处理、鉴权和测试方式。
-5. 区分 confirmed facts（已确认事实）、assumptions（假设）和 unresolved decisions（未决事项）。
-6. 发现未决事项会实质改变业务、架构、权限或不可逆风险时，停止实施并请求决策。
+2. 只读调查真实代码、测试、配置、契约、数据、权限、Git 状态和相似实现。
+3. 识别 project-native 构建、分层、命名、错误处理、鉴权和测试方式。
+4. 区分 confirmed facts（已确认事实）、assumptions（假设）和 unresolved decisions（未决事项）。
+5. 发现未决事项会实质改变业务、架构、权限或不可逆风险时，停止实施并请求决策。
 
 ## 按需读取
 
@@ -25,8 +28,6 @@ description: 在项目 AI 规范和已批准范围内实施新功能、缺陷修
 | 权限、配置和外部或 AI 集成 | `references/integration-and-permissions.md` |
 | 计划、修复说明和最终交付格式 | `references/delivery-templates.md` |
 | 完成前自检 | `references/review-checklist.md` |
-
-同时按任务读取模板库中对应的 `core/`、`contracts/`、`stacks/` 和 `business/` 规范，不复制整套上下文。
 
 ## 计划
 

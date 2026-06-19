@@ -201,3 +201,17 @@ except SpecificError as e:
 - [ ] 无硬编码 ID / 密钥 / 阈值
 - [ ] 单元测试覆盖核心逻辑
 - [ ] 无"为通过编译注释掉逻辑"的痕迹
+
+---
+
+## 十一、已知陷阱（JVM / Spring）
+
+### 11.1 Maven BOM 依赖管理
+- **现象**：本地能跑、CI 跑不起来（或反之）
+- **原因**：父 POM `<dependencyManagement>` 中的 BOM 版本与子模块实际依赖版本不一致，或 `mvn dependency:tree` 看到的传递依赖版本与预期不符
+- **解决**：每次改依赖立即 commit `pom.xml`；CI 校验 `mvn dependency:tree` 一致性
+
+### 11.2 SPI / 反射 / 注解处理器
+- **现象**：编译通过但运行时报 `ServiceConfigurationError` / `ClassNotFoundException` / 注解不生效
+- **原因**：SPI 的 `META-INF/services` 文件未更新；注解处理器未注册；反射调用的类被混淆或移除
+- **解决**：改包名/类名后全局搜索 `META-INF/services` 和 `@AutoService` 注册；注解处理器用 `annotationProcessor` scope 声明

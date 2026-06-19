@@ -2,8 +2,6 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $failures = [System.Collections.Generic.List[string]]::new()
-$importPromptName = (-join (@(19968, 38190, 23548, 20837, 25552, 31034, 35789) | ForEach-Object { [char]$_ })) + '.md'
-$enhancementPlanName = (-join (@(36890, 29992) | ForEach-Object { [char]$_ })) + 'AI' + (-join (@(35268, 33539, 22686, 24378, 26041, 26696) | ForEach-Object { [char]$_ })) + '.md'
 
 function Assert-True {
     param([bool]$Condition, [string]$Message)
@@ -23,8 +21,6 @@ function Read-ProjectFile {
 $requiredFiles = @(
     'AI-START.md',
     'README.md',
-    $importPromptName,
-    $enhancementPlanName,
     'ai-spec.example.yaml',
     'adapters/README.md',
     'adapters/claude-code/CLAUDE.md.template',
@@ -55,7 +51,7 @@ foreach ($relativePath in $requiredFiles) {
 }
 
 $rootMarkdown = @(Get-ChildItem -LiteralPath $root -File -Filter '*.md' | Select-Object -ExpandProperty Name)
-$unexpectedRootMarkdown = @($rootMarkdown | Where-Object { $_ -notin @('AI-START.md', 'README.md', $importPromptName, $enhancementPlanName) })
+$unexpectedRootMarkdown = @($rootMarkdown | Where-Object { $_ -notin @('AI-START.md', 'README.md') })
 Assert-True ($unexpectedRootMarkdown.Count -eq 0) "Unexpected root Markdown: $($unexpectedRootMarkdown -join ', ')"
 
 $start = Read-ProjectFile 'AI-START.md'

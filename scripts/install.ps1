@@ -118,7 +118,7 @@ foreach ($relativePath in $runtimeFiles) {
 
 $runtimeDirectories = @(
     'adapters', 'business', 'contracts', 'core', 'governance',
-    'profiles', 'scripts', 'skills', 'stacks', 'tests', 'workflows'
+    'scripts', 'skills', 'stacks', 'tests', 'workflows'
 )
 
 foreach ($directory in $runtimeDirectories) {

@@ -9,11 +9,13 @@ description: 将模糊想法、业务需求和跨模块变更转化为可实施�
 
 ## 启动
 
-1. 读取项目根目录的 `AI-START.md`；不存在时，定位等价的 AI 入口、项目说明和贡献规范。
-2. 判断项目阶段：新项目、存量项目或开发中项目。
-3. 只读扫描项目结构、配置、契约、数据模型、权限、测试和相似功能。
-4. 识别 project-native 目录、命名、分层、错误处理、鉴权、构建和测试约定，不凭经验另造体系。
-5. 将信息分成 confirmed facts（已确认事实）、assumptions（假设）、open questions（待确认问题）和 decisions（设计结论）。
+> 假定 AI-START.md §1.5-§1.6 启动协议已完成，项目阶段和业务逻辑已识别。
+> 上下文路由按 AI-START.md §6 执行，本 Skill 不建立第二套路由规则。
+
+1. 读取项目根目录的 `AI-START.md`；不存在时，定位等价的 AI 入口。
+2. 只读扫描项目结构、配置、契约、数据模型、权限、测试和相似功能。
+3. 识别 project-native 目录、命名、分层、错误处理、鉴权、构建和测试约定，不凭经验另造体系。
+4. 将信息分成 confirmed facts（已确认事实）、assumptions（假设）、open questions（待确认问题）和 decisions（设计结论）。
 
 ## 按需读取
 
@@ -25,8 +27,6 @@ description: 将模糊想法、业务需求和跨模块变更转化为可实施�
 | 将方案映射到真实项目结构 | `references/solution-mapping.md` |
 | 输出完整方案、轻量方案或开发转交单 | `references/deliverable-templates.md` |
 | 交付前审查完整性和可实施性 | `references/review-checklist.md` |
-
-同时按任务读取模板库中的 `core/`、`contracts/`、`business/` 和 `governance/` 对应规范；文件不存在时记录缺口，不伪造内容。
 
 ## 工作流
 

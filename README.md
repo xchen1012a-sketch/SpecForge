@@ -61,7 +61,6 @@ git clone https://github.com/xchen1012a-sketch/SpecForge.git .ai-spec && rm -rf 
 ├── core/                       # 通用工程规范内核
 ├── docs/                       # 使用说明和 V1 历史资料
 ├── governance/                 # 规则分级、例外和治理模板
-├── profiles/                   # 项目类型组合规则
 ├── scripts/                    # 安装与验证脚本
 ├── skills/                     # 标准 Agent Skill
 ├── stacks/                     # 技术栈专项规范
