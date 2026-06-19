@@ -85,6 +85,10 @@ Assert-True ($start.Contains('暂存区必须检查')) 'AI-START.md missing stag
 Assert-True ($start.Contains('templateVersion')) 'AI-START.md missing template version consistency rule'
 Assert-True ($start.Contains('install.ps1 -Sync')) 'AI-START.md missing sync command rule'
 Assert-True ($start.Contains('不得自动覆盖')) 'AI-START.md missing no-automatic-sync-overwrite rule'
+Assert-True ($start.Contains('先澄清假设')) 'AI-START.md missing clarify-assumptions coding discipline'
+Assert-True ($start.Contains('简单优先')) 'AI-START.md missing simplicity-first coding discipline'
+Assert-True ($start.Contains('外科式改动')) 'AI-START.md missing surgical-change coding discipline'
+Assert-True ($start.Contains('目标驱动验证')) 'AI-START.md missing goal-driven verification discipline'
 foreach ($mode in @('L0 快速恢复', 'L1 机械改动', 'L2 标准改动', 'L3 高风险改动', 'L4 接入/审计')) {
     Assert-True ($start.Contains($mode)) "AI-START.md missing context budget mode: $mode"
 }
