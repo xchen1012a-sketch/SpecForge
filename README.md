@@ -1,4 +1,4 @@
-# Universal AI Engineering Specification V2
+# SpecForge
 
 一套面向企业级软件开发的、工具无关的 AI 协作规范。它通过单一入口启动，通过模块化规则适配不同项目，通过工具适配器兼容不同 AI 开发软件。
 

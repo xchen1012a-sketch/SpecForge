@@ -1,4 +1,4 @@
-# Universal AI Engineering Specification · 统一启动入口
+# SpecForge · 统一启动入口
 
 > 本文件是所有 AI 开发工具的唯一强制启动入口。
 > 当用户要求“启动规范”“接入 AI Spec”或要求读取本文件时，按下述协议执行。
