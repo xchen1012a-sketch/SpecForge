@@ -4,6 +4,26 @@
 
 ## 最快启动
 
+### 一行命令导入到项目
+
+在目标项目根目录打开终端，执行（任选其一）：
+
+PowerShell（Windows）：
+
+```powershell
+git clone https://github.com/xchen1012a-sketch/SpecForge.git .ai-spec; Remove-Item -Recurse -Force .ai-spec/.git
+```
+
+Bash（macOS / Linux / Git Bash）：
+
+```bash
+git clone https://github.com/xchen1012a-sketch/SpecForge.git .ai-spec && rm -rf .ai-spec/.git
+```
+
+`.ai-spec/` 已存在时会报错，需先删或换名。
+
+### 启动 AI
+
 把本目录放到项目根目录的 `.ai-spec/`，然后对任意能读取项目文件的 AI 说：
 
 ```text
