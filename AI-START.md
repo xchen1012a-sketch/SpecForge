@@ -213,8 +213,7 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 
 | 任务 | 必读 |
 |---|---|
-| 任意代码修改 | `core/architecture.md`、`core/security-standard.md`、`core/delivery-standard.md` |
-| 业务逻辑 | `business/business-rules.md` |
+| 任意代码修改 | `core/architecture.md`、`core/security-standard.md`、`core/delivery-standard.md`、`business/business-rules.md`、`business/project-map.md` |
 | API/事件/跨端 | `contracts/api-contract-standard.md`、`contracts/integration-standard.md` |
 | 权限/租户/数据范围 | `core/permission-standard.md` |
 | 数据库/迁移 | `core/data-migration-standard.md` |
