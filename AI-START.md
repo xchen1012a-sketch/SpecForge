@@ -1,7 +1,9 @@
 # SpecForge · 统一启动入口
 
 > 本文件是所有 AI 开发工具的唯一强制启动入口。
-> 当用户要求“启动规范”“接入 AI Spec”或要求读取本文件时，按下述协议执行。
+> 当用户要求”启动规范””接入 AI Spec”或要求读取本文件时，按下述协议执行。
+
+**⚡ 快速恢复（已接入项目）**：若 `business/quick-ref.md` 存在且用户当前没有说”接入规范”/”启动”/”初始化”，则**只读 quick-ref.md（30 行）**，然后跳转到 §6 上下文路由按任务加载，**无需读完本文件**。首次接入或用户明确要求时才读全文。
 
 ## 0. 核心身份
 
@@ -71,6 +73,7 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
    - `.ai-spec/business/project-map.md`：一句话定位 + 核心域 + 主要入口 + 外部集成 + 已知风险
    - `.ai-spec/business/business-rules.md`：按章节填充业务规则，每条带来源 / 可靠度 / 冲突标记（详见 §1.6）。新项目无代码可扫时，由用户口述 AI 起草。
    - `.ai-spec/business/quick-ref.md`：从已填充的 `business-rules.md` 浓缩生成（约 30 行），只保留核心域、关键状态机、关键不变量和 KPI 摘要，作为 AI 会话启动时的基础上下文。
+   - **章节裁剪规则**（写入 `business-rules.md` 时自动执行）：只生成实际适用的章节。无组织概念（无用户/租户/部门）→ 跳过三；无 KPI/报表/统计 → 跳过四；无有状态实体 → 跳过五；无管理端/后台 → 跳过七；无外部数据接入 → 跳过九。章节一、二、六、八、十为必填基础。
 4. **规范瘦身**（只删 `.ai-spec/` 内的规范模板文件，**绝不触碰项目业务代码、配置、依赖、迁移、CI/CD**；基于扫描结果删除无关文件，宁可少不可乱）：
 
    **永不删**（核心，删了规范就废了）：
@@ -384,6 +387,7 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 | 任务 | 必读 |
 |---|---|
 | 任意代码修改（基础） | `core/delivery-standard.md`、`core/security-standard.md`、`core/architecture.md`、`business/quick-ref.md`（约 30 行，自动生成） |
+| 纯机械/文案改动（修 typo、改配置常量、重命名变量/文件、改注释、格式化 — 不改变任何行为逻辑） | 仅 `business/quick-ref.md`（无需加载 core/ 文件） |
 | 纯视觉/样式修复（仅当同时满足：只改 CSS 色值/间距/字号/圆角/图标/纯文案 typo；不动 JSX/HTML 结构、不动交互逻辑、不动按钮或业务术语文案、不动权限可见性） | 仅 `core/delivery-standard.md` |
 | 业务逻辑改动（触发条件见下） | 基础 + `business/business-rules.md`、`business/project-map.md` |
 | API/事件/跨端 | `contracts/api-contract-standard.md`、`contracts/integration-standard.md` |
