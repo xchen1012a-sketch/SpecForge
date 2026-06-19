@@ -213,8 +213,9 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 
 | 任务 | 必读 |
 |---|---|
-| 任意代码修改（默认） | `core/architecture.md`、`core/security-standard.md`、`core/delivery-standard.md`、`business/business-rules.md`、`business/project-map.md` |
+| 任意代码修改（基础） | `core/delivery-standard.md`、`core/security-standard.md`、`core/architecture.md` |
 | 纯视觉/样式修复（仅当同时满足：只改 CSS 色值/间距/字号/圆角/图标/纯文案 typo；不动 JSX/HTML 结构、不动交互逻辑、不动按钮或业务术语文案、不动权限可见性） | 仅 `core/delivery-standard.md` |
+| 业务逻辑改动（触发条件见下） | 基础 + `business/business-rules.md`、`business/project-map.md` |
 | API/事件/跨端 | `contracts/api-contract-standard.md`、`contracts/integration-standard.md` |
 | 权限/租户/数据范围 | `core/permission-standard.md` |
 | 数据库/迁移 | `core/data-migration-standard.md` |
@@ -225,6 +226,16 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 | 前端/后端/移动/AI | `stacks/` 中对应文件 |
 | 产品方案 | `skills/product-architect/SKILL.md` |
 | 开发实施/修 Bug | `skills/dev-implementation/SKILL.md` |
+
+**业务逻辑改动的触发条件**（任一满足即按"业务逻辑改动"行加载，不确定时默认触发）：
+
+- 改动 domain / service / entity 层代码
+- 改动金额、库存、KPI、积分、优惠等计算
+- 改动状态机或状态字段
+- 改动权限、认证、数据范围
+- 改动 API 契约或事件 schema
+- 数据库 schema 变更（DDL、字段、索引）
+- 改动业务术语文案（按钮文案、错误提示、报告标题、邮件模板）
 
 先查项目自己的 `ai-spec.yaml`；不存在时参考 `ai-spec.example.yaml` 生成草案，但未经确认不得把推断写成业务事实。
 
