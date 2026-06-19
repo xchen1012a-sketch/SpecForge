@@ -47,11 +47,21 @@ if (Test-Path -LiteralPath $settingsPath -PathType Leaf) {
 }
 
 $brokenLinks = [System.Collections.Generic.List[string]]::new()
+$conflictMarkers = [System.Collections.Generic.List[string]]::new()
 $markdownFiles = Get-ChildItem -LiteralPath $root -Recurse -File -Filter '*.md' |
     Where-Object { $_.FullName -notmatch '[\\/]docs[\\/]legacy[\\/]' }
 
 foreach ($file in $markdownFiles) {
     $content = Get-Content -Raw -Encoding UTF8 -LiteralPath $file.FullName
+    $lines = Get-Content -Encoding UTF8 -LiteralPath $file.FullName
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i].Contains('[') -and $lines[$i].Contains('冲突')) {
+            $relativeFile = $file.FullName.Substring($root.Length + 1)
+            $lineNumber = $i + 1
+            $conflictMarkers.Add("${relativeFile}:$lineNumber $($lines[$i].Trim())")
+        }
+    }
+
     $matches = [regex]::Matches($content, '\[[^\]]+\]\(([^)]+)\)')
     foreach ($match in $matches) {
         $target = $match.Groups[1].Value.Trim('<', '>')
@@ -64,6 +74,11 @@ foreach ($file in $markdownFiles) {
             $brokenLinks.Add("$relativeFile -> $target")
         }
     }
+}
+
+if ($conflictMarkers.Count -gt 0) {
+    Write-Host 'Conflict summary:' -ForegroundColor Yellow
+    foreach ($marker in $conflictMarkers) { Write-Host "- $marker" -ForegroundColor Yellow }
 }
 
 if ($brokenLinks.Count -gt 0) {

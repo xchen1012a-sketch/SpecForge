@@ -34,6 +34,8 @@ $requiredFiles = @(
     'core-lite/security-lite.md',
     'core-lite/testing-lite.md',
     'core/command-standard.md',
+    'workflows/multi-project-onboard.md',
+    'workflows/output-protocol.md',
     'workflows/new-project.md',
     'workflows/existing-project.md',
     'workflows/in-progress-project.md',
@@ -82,13 +84,12 @@ Assert-True ($start.Contains('tiny | small | medium | large | enterprise')) 'AI-
 Assert-True ($start.Contains('Git 提交硬性门禁')) 'AI-START.md missing hard git commit gate'
 Assert-True ($start.Contains('只提交纯代码')) 'AI-START.md missing pure-code commit rule'
 Assert-True ($start.Contains('暂存区必须检查')) 'AI-START.md missing staging-area check rule'
-Assert-True ($start.Contains('templateVersion')) 'AI-START.md missing template version consistency rule'
-Assert-True ($start.Contains('install.ps1 -Sync')) 'AI-START.md missing sync command rule'
-Assert-True ($start.Contains('不得自动覆盖')) 'AI-START.md missing no-automatic-sync-overwrite rule'
 Assert-True ($start.Contains('先澄清假设')) 'AI-START.md missing clarify-assumptions coding discipline'
 Assert-True ($start.Contains('简单优先')) 'AI-START.md missing simplicity-first coding discipline'
 Assert-True ($start.Contains('外科式改动')) 'AI-START.md missing surgical-change coding discipline'
 Assert-True ($start.Contains('目标驱动验证')) 'AI-START.md missing goal-driven verification discipline'
+Assert-True ($start.Contains('workflows/multi-project-onboard.md')) 'AI-START.md missing lazy multi-project workflow route'
+Assert-True ($start.Contains('workflows/output-protocol.md')) 'AI-START.md missing output protocol route'
 foreach ($mode in @('L0 快速恢复', 'L1 机械改动', 'L2 标准改动', 'L3 高风险改动', 'L4 接入/审计')) {
     Assert-True ($start.Contains($mode)) "AI-START.md missing context budget mode: $mode"
 }
@@ -106,6 +107,24 @@ foreach ($lite in @('core-lite/delivery-lite.md', 'core-lite/security-lite.md', 
     Assert-True ($liteContent.Contains('appliesTo:')) "$lite missing appliesTo frontmatter"
     Assert-True ($liteContent.Contains('loadWhen:')) "$lite missing loadWhen frontmatter"
 }
+
+$deliveryLite = Read-ProjectFile 'core-lite/delivery-lite.md'
+Assert-True ($deliveryLite.Contains('短版输出')) 'delivery-lite missing short output rule'
+Assert-True ($deliveryLite.Contains('禁止流水账')) 'delivery-lite missing no-process-log rule'
+
+$outputProtocol = Read-ProjectFile 'workflows/output-protocol.md'
+Assert-True ($outputProtocol.Contains('默认短版')) 'output protocol missing short-by-default rule'
+Assert-True ($outputProtocol.Contains('L0')) 'output protocol missing level-based output rules'
+
+$multiProjectWorkflow = Read-ProjectFile 'workflows/multi-project-onboard.md'
+Assert-True ($multiProjectWorkflow.Contains('同项目多副本')) 'multi-project workflow missing duplicate-copy guard'
+Assert-True ($multiProjectWorkflow.Contains('ai-spec.yaml.draft')) 'multi-project workflow missing draft profile guidance'
+Assert-True ($multiProjectWorkflow.Contains('templateVersion')) 'multi-project workflow missing template version consistency rule'
+Assert-True ($multiProjectWorkflow.Contains('install.ps1 -TargetRoot')) 'multi-project workflow missing sync command rule'
+Assert-True ($multiProjectWorkflow.Contains('禁止同步覆盖')) 'multi-project workflow missing no-automatic-sync-overwrite rule'
+
+$validateScript = Read-ProjectFile 'scripts/validate.ps1'
+Assert-True ($validateScript.Contains('Conflict summary')) 'validate.ps1 missing conflict summary output'
 
 $specExample = Read-ProjectFile 'ai-spec.example.yaml'
 Assert-True ($specExample.Contains('context:')) 'ai-spec.example.yaml missing context configuration'

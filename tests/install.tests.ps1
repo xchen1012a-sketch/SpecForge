@@ -34,6 +34,9 @@ try {
     $profile = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $safeRoot '.ai-spec\ai-spec.yaml')
     Assert-Test ($profile.Contains('stage: existing')) 'Installer did not write the selected project stage'
 
+    & $installer -TargetRoot $safeRoot -Mode existing -Tools 'generic' -Apply *> $null
+    Assert-Test (Test-Path -LiteralPath (Join-Path $safeRoot '.ai-spec\ai-spec.yaml.draft')) 'Installer did not create ai-spec.yaml.draft when profile already exists'
+
     & (Join-Path $safeRoot '.ai-spec\tests\template.tests.ps1') *> $null
 
     $gitPlan = & $installer -TargetRoot $safeRoot -Mode existing -Tools 'generic' -Onboard -ManageGit 6>&1
@@ -107,6 +110,12 @@ try {
     Assert-Test (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\adapters\codex')) 'Onboard mode did not retain selected adapter'
     Assert-Test (-not (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\adapters\cursor'))) 'Onboard mode kept unused adapter'
     & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null
+
+    Add-Content -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\business\business-rules.md') -Value '[⚠️ 冲突 2026-06-19] code says A, rule says B'
+    $conflictValidation = & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') 6>&1
+    $conflictValidationText = [string]::Join("`n", @($conflictValidation))
+    Assert-Test ($conflictValidationText.Contains('Conflict summary')) 'Installed validate.ps1 did not report conflict summary'
+    Assert-Test ($conflictValidationText.Contains('business\business-rules.md')) 'Conflict summary did not include conflict file path'
 
     $frontendStart = Join-Path $frontend '.ai-spec\AI-START.md'
     $frontendRulesPath = Join-Path $frontend '.ai-spec\business\business-rules.md'

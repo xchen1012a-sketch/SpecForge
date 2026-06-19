@@ -119,93 +119,7 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 
 ### 1.5.1 多项目接入模式
 
-当 `PROJECT_ROOT` 下检测到 2+ 个项目目录时，进入此模式。
-
-#### 安装规则
-
-1. **每项目一份 `.ai-spec/`**：为每个子项目目录各安装一份完整的 `.ai-spec/`。
-2. **共享身份标识**：所有实例使用同一个 `multiProjectId`（UUID v4，安装时生成），写入每个实例的 `ai-spec.yaml` 中 `spec.multiProjectId`。
-3. **父目录索引**：在父目录创建 `.specforge.json`（不是 `.ai-spec/` 目录，仅为轻量索引）：
-
-```json
-{
-  "templateSource": "SpecForge",
-  "templateVersion": 2,
-  "multiProjectId": "<uuid>",
-  "projects": [
-    {
-      "path": "frontend",
-      "type": "frontend",
-      "buildFiles": ["package.json"],
-      "installedAt": "<ISO timestamp>"
-    },
-    {
-      "path": "backend",
-      "type": "backend",
-      "buildFiles": ["pom.xml"],
-      "installedAt": "<ISO timestamp>"
-    }
-  ]
-}
-```
-
-4. **核心文件一致性**：以下文件在所有实例中**内容完全一致**（从同一模板版本复制）：
-   - `AI-START.md`、`README.md`
-   - `core/` 全部
-   - `core-lite/` 全部
-   - `governance/` 全部
-   - `skills/` 全部
-   - `workflows/` 全部
-   - `contracts/` 全部
-   - `scripts/validate.ps1`
-5. **差异化文件**（按项目类型独立维护）：
-   - `ai-spec.yaml`（各自的技术栈和命令）
-   - `business/business-rules.md`、`business/project-map.md`、`business/quick-ref.md`
-   - `stacks/`（按项目类型瘦身，前端删后端栈，后端删前端栈）
-   - `adapters/`（各项目可能使用不同 AI 工具）
-
-#### 项目类型判定
-
-对每个子项目目录，按优先级判定类型：
-
-| 信号 | 类型 |
-|------|------|
-| `package.json` 且依赖含 React / Vue / Next.js 等前端框架 | `frontend` |
-| `pom.xml` / `go.mod` / `requirements.txt` 且无前端框架依赖 | `backend` |
-| `package.json` 且同时含前端框架和后端框架依赖 | `fullstack` |
-| `pubspec.yaml` / 含 `android/` 或 `ios/` 目录 | `mobile` |
-| `Cargo.toml` / `go.mod` 且无 Web 服务框架 | `library-sdk` |
-| `pyproject.toml` 且含 AI/LLM 框架依赖 | `ai-llm` |
-| 含 `main.go` / `main.rs` / `__main__.py` / `bin/` 目录，且无 Web 框架依赖 | `cli` |
-| 含 `dbt_project.yml` / `airflow.cfg` / `dagster` / 大量 SQL 文件，且无 Web 入口 | `data-platform` |
-| 无法判定 | `generic` |
-
-#### 瘦身
-
-每个实例的 `.ai-spec/` 按项目类型独立执行规范瘦身（规则同 §1.5 步骤 4），确保前端项目不保留后端栈，后端项目不保留前端栈。
-
-#### 完成报告（多项目扩展）
-
-在 §1.5 步骤 6 的完成报告基础上追加：
-
-```markdown
-## 多项目接入
-| 子项目 | 类型 | 瘦身 | 状态 |
-|---|---|---|---|
-| frontend | frontend | 删除 backend-general.md, mobile-general.md, ... | 新增 |
-| backend | backend | 删除 frontend-general.md, mobile-general.md, ... | 新增 |
-- 共享 ID：<uuid>
-- 父目录 .ai-spec/：已迁移 / 无需迁移
-```
-
-#### 后续会话行为
-
-- **子项目目录启动**：正常启动协议，`ai-spec.yaml` 中的 `multiProjectId` 标识多项目身份。
-- **父目录启动**：检测到 `.specforge.json` 存在，先读取 `templateVersion` 和子项目列表，再询问用户本次涉及哪个子项目（或"全部"）。
-- **版本一致性检查**：父目录 `.specforge.json.templateVersion` 必须与子项目 `.ai-spec/ai-spec.yaml` 中 `spec.templateVersion` 一致；不一致时必须报告父目录版本、子项目版本和受影响项目。
-- **同步建议**：版本不一致或用户明确要求更新规范时，建议执行 `scripts/install.ps1 -TargetRoot <父目录或项目目录> -Sync`；实际覆盖核心文件必须由用户确认后再追加 `-Apply`。
-- **覆盖边界**：`install.ps1 -Sync` 只同步核心一致文件，不同步 `ai-spec.yaml`、`business/`、`stacks/`、`adapters/`；AI 不得自动覆盖项目差异文件。
-- **跨项目协调**：API 契约变更时，主动检查兄弟项目的 `contracts/`。
+检测到 2+ 个候选项目目录时，读取 `workflows/multi-project-onboard.md`。未读取该文件前，不得批量安装多份 `.ai-spec/`，尤其要先排除“同项目多副本”。
 
 ## 1.6 项目逻辑的实时维护
 
@@ -513,6 +427,8 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 只记录必要信息，禁止把密码、Token、个人敏感数据写入这些文件。
 
 ## 9. 交付协议（Delivery Protocol）
+
+默认按 `workflows/output-protocol.md` 输出短版。只有 L3/L4、高风险、失败、冲突或用户要求详细说明时，才升级为完整交付报告。
 
 每次修改后的最终交付至少包含：
 

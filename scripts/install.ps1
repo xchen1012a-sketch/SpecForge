@@ -260,6 +260,38 @@ function Remove-SpecPath {
     }
 }
 
+function New-AiSpecProfileContent {
+    param(
+        [string]$ProjectRoot,
+        [string]$Stage,
+        [string]$ProjectType,
+        [string]$MultiProjectId
+    )
+
+    $profile = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $sourceRoot 'ai-spec.example.yaml')
+    $projectName = Split-Path -Leaf $ProjectRoot
+    $multiValue = if ($MultiProjectId) { $MultiProjectId } else { 'null' }
+    $toolsValue = '[' + ($Tools -join ', ') + ']'
+    $inventory = Get-ProjectInventory -ProjectRoot $ProjectRoot -IsMultiProject ([bool]$MultiProjectId)
+
+    $profile = $profile -replace '(?m)^  multiProjectId: null.*$', "  multiProjectId: $multiValue       # multi-project shared ID"
+    $profile = $profile -replace '(?m)^  templateVersion:\s*\d+.*$', "  templateVersion: $templateVersion         # installed SpecForge template version"
+    $profile = $profile -replace 'name: example-project', "name: $projectName"
+    $profile = $profile -replace 'stage: new # new \| existing \| in-progress', "stage: $Stage # new | existing | in-progress"
+    $profile = $profile -replace 'type: generic # backend \| frontend \| fullstack \| mobile \| library-sdk \| cli \| data-platform \| ai-llm \| generic', "type: $ProjectType # backend | frontend | fullstack | mobile | library-sdk | cli | data-platform | ai-llm | generic"
+    $profile = $profile -replace 'tools: \[generic\]', "tools: $toolsValue"
+    $profile = $profile -replace 'projectSize: auto # auto \| tiny \| small \| medium \| large \| enterprise', "projectSize: $($inventory.projectSize) # auto | tiny | small | medium | large | enterprise"
+    $profile = $profile -replace 'fileCount: 0', "fileCount: $($inventory.fileCount)"
+    $profile = $profile -replace 'buildFileCount: 0', "buildFileCount: $($inventory.buildFileCount)"
+    $profile = $profile -replace 'hasDatabase: false', "hasDatabase: $($inventory.hasDatabase.ToString().ToLowerInvariant())"
+    $profile = $profile -replace 'hasApi: false', "hasApi: $($inventory.hasApi.ToString().ToLowerInvariant())"
+    $profile = $profile -replace 'hasAuth: false', "hasAuth: $($inventory.hasAuth.ToString().ToLowerInvariant())"
+    $profile = $profile -replace 'hasCi: false', "hasCi: $($inventory.hasCi.ToString().ToLowerInvariant())"
+    $profile = $profile -replace 'multiProject: false', "multiProject: $($inventory.multiProject.ToString().ToLowerInvariant())"
+
+    return $profile
+}
+
 function Write-AiSpecProfile {
     param(
         [string]$SpecRoot,
@@ -272,32 +304,20 @@ function Write-AiSpecProfile {
     $profileDestination = Join-Path $SpecRoot 'ai-spec.yaml'
     if (Test-Path -LiteralPath $profileDestination) {
         $script:conflicts.Add($profileDestination)
+        $draftDestination = Join-Path $SpecRoot 'ai-spec.yaml.draft'
+        if (-not (Test-Path -LiteralPath $draftDestination)) {
+            $script:actions.Add("CREATE $draftDestination (draft; existing ai-spec.yaml preserved)")
+            if ($Apply) {
+                $draft = New-AiSpecProfileContent -ProjectRoot $ProjectRoot -Stage $Stage -ProjectType $ProjectType -MultiProjectId $MultiProjectId
+                [System.IO.File]::WriteAllText($draftDestination, $draft, [System.Text.UTF8Encoding]::new($false))
+            }
+        }
         return
     }
 
     $script:actions.Add("CREATE $profileDestination")
     if ($Apply) {
-        $profile = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $sourceRoot 'ai-spec.example.yaml')
-        $projectName = Split-Path -Leaf $ProjectRoot
-        $multiValue = if ($MultiProjectId) { $MultiProjectId } else { 'null' }
-        $toolsValue = '[' + ($Tools -join ', ') + ']'
-        $inventory = Get-ProjectInventory -ProjectRoot $ProjectRoot -IsMultiProject ([bool]$MultiProjectId)
-
-        $profile = $profile -replace '(?m)^  multiProjectId: null.*$', "  multiProjectId: $multiValue       # multi-project shared ID"
-        $profile = $profile -replace '(?m)^  templateVersion:\s*\d+.*$', "  templateVersion: $templateVersion         # installed SpecForge template version"
-        $profile = $profile -replace 'name: example-project', "name: $projectName"
-        $profile = $profile -replace 'stage: new # new \| existing \| in-progress', "stage: $Stage # new | existing | in-progress"
-        $profile = $profile -replace 'type: generic # backend \| frontend \| fullstack \| mobile \| library-sdk \| cli \| data-platform \| ai-llm \| generic', "type: $ProjectType # backend | frontend | fullstack | mobile | library-sdk | cli | data-platform | ai-llm | generic"
-        $profile = $profile -replace 'tools: \[generic\]', "tools: $toolsValue"
-        $profile = $profile -replace 'projectSize: auto # auto \| tiny \| small \| medium \| large \| enterprise', "projectSize: $($inventory.projectSize) # auto | tiny | small | medium | large | enterprise"
-        $profile = $profile -replace 'fileCount: 0', "fileCount: $($inventory.fileCount)"
-        $profile = $profile -replace 'buildFileCount: 0', "buildFileCount: $($inventory.buildFileCount)"
-        $profile = $profile -replace 'hasDatabase: false', "hasDatabase: $($inventory.hasDatabase.ToString().ToLowerInvariant())"
-        $profile = $profile -replace 'hasApi: false', "hasApi: $($inventory.hasApi.ToString().ToLowerInvariant())"
-        $profile = $profile -replace 'hasAuth: false', "hasAuth: $($inventory.hasAuth.ToString().ToLowerInvariant())"
-        $profile = $profile -replace 'hasCi: false', "hasCi: $($inventory.hasCi.ToString().ToLowerInvariant())"
-        $profile = $profile -replace 'multiProject: false', "multiProject: $($inventory.multiProject.ToString().ToLowerInvariant())"
-
+        $profile = New-AiSpecProfileContent -ProjectRoot $ProjectRoot -Stage $Stage -ProjectType $ProjectType -MultiProjectId $MultiProjectId
         [System.IO.File]::WriteAllText($profileDestination, $profile, [System.Text.UTF8Encoding]::new($false))
     }
 }
