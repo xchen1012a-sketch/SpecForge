@@ -24,7 +24,7 @@
 5. **识别 AI 工具**：使用对应适配器；没有适配器时使用 `adapters/generic/`。
 6. **加载最小上下文**：按“上下文路由”读取与当前任务有关的规则，不盲目加载全部文档。
 7. **输出启动报告**：说明识别结果、依据、风险、待确认项和下一步。
-8. **等待任务或继续已明确任务**：仅“读取并启动规范”不授权修改业务代码。
+8. **路由到后续动作**：接入类请求（”接入规范”、”启动”、”初始化 .ai-spec”）直接进入 §1.5 自动接入模式；其它明确任务按 §7 执行。任何模式下都不修改业务代码，除非用户在任务中明确授权。
 
 启动报告至少包含：
 
@@ -36,6 +36,36 @@
 - 主要风险：
 - 下一步：
 ```
+
+## 1.5 自动接入模式（Fast Onboarding）
+
+用户说"接入规范"、"启动 SpecForge"、"初始化 .ai-spec"时默认进入此模式，无需逐步询问。已授权动作：
+
+1. **创建接入分支**：从当前 HEAD 创建 `chore/specforge-onboard`（或用户指定名），所有接入改动落在此分支；主分支保持干净，回退只需 `git checkout 主分支` 或删除分支。
+2. **同步规范文件到 `.ai-spec/`**：
+   - 缺失文件直接复制
+   - 已存在文件按内容差异覆盖规范正文：`core/`、`contracts/`、`stacks/`、`skills/`、`governance/`、`workflows/`、`adapters/`、`AI-START.md`、`README.md`
+   - **永不覆盖**：项目自己的 `ai-spec.yaml`、`business/business-rules.md`、AI 工具入口（`CLAUDE.md`、`AGENTS.md`、`.cursor/rules/`、`.github/copilot-instructions.md` 等）
+3. **只读业务扫描**（不改代码）：扫描代码、构建清单、Git 历史、现有文档，生成：
+   - `.ai-spec/business/project-map.md`：一句话定位 + 核心域 + 主要入口 + 外部集成 + 已知风险
+   - `.ai-spec/business/business-rules.discovered.md`：候选规则，每条带来源和可靠度
+4. **绝对禁止**：
+   - 修改业务代码、配置、依赖、迁移、CI/CD
+   - `git commit` / `git push`（只创建分支 + 在工作区添加/修改 .ai-spec 文件）
+   - 覆盖任何"永不覆盖"清单中的文件
+5. **完成报告**（5-8 行，越长越失败）：
+
+```markdown
+## 接入完成
+- 分支：chore/specforge-onboard
+- 规范文件：N 新增 / M 更新
+- 保留未覆盖：ai-spec.yaml、business-rules.md 等
+- 项目画像：[一句话定位]
+- 候选规则：X 条（已证实 Y / 待确认 Z）
+- 下一步：检查改动 → 合并或继续在分支上工作
+```
+
+接入完成后由用户决定：合并分支、调整候选规则，或直接在分支上继续开发。
 
 ## 2. 项目阶段识别（Project Stage Detection）
 
