@@ -15,7 +15,7 @@ SpecForge 只安装到当前项目，不会写入 `~/.claude/rules/`、`~/.codex
 - **轻量核心规范**：`core-lite/` 处理简单任务，避免常驻大文档。
 - **完整工程约束**：高风险任务按需加载 `core/`、`contracts/`、`stacks/`。
 - **接入时自动瘦身**：根据项目结构裁剪业务规则、技术栈规范和无关章节。
-- **多项目版本同步**：父目录 `.specforge.json` 和子项目 `ai-spec.yaml` 记录 `templateVersion`，可用 `-Sync` 更新核心规范。
+- **多项目版本同步**：父目录 `.specforge.json` 和子项目 `ai-spec.yaml` 记录 `templateVersion`，通过项目内更新器同步核心规范。
 - **安全提交门禁**：提交前必须检查暂存区，过滤 `.env`、IDE 配置、本地设置、构建产物和真实凭证。
 - **五个核心 Skill**：产品方案、开发实施、代码审查、问题诊断、规范评估。
 - **Skill 策略可切换**：默认 `project-first`；用户可改为 `local-first` 或 `hybrid`，决定项目 Skill、本地 Skill 或两者兼顾。
@@ -58,6 +58,8 @@ Bash：
 ```bash
 git clone https://github.com/xchen1012a-sketch/SpecForge.git .ai-spec && rm -rf .ai-spec/.git
 ```
+
+安装完成后，不需要手动跑额外脚本；直接把下面的首次接入提示词发给 AI，让 AI 按规范完成项目画像、动态瘦身和入口文件生成。
 
 ### 首次接入提示词
 
@@ -116,46 +118,13 @@ tiny/small 每 30 天、medium 每 14 天、large/enterprise 每 7 天检查一�
 .\.ai-spec\scripts\audit-global-context.ps1
 ```
 
-## 安装器
-
-安装器能力差异：
-
-| 安装器 | 定位 |
-| --- | --- |
-| `install.ps1` | 完整接入：扫描项目、生成画像、动态瘦身、多项目、同步、可选 Git 管理 |
-| `install.sh` | Mac/Linux 轻量复制：不做完整接入；需要完整流程请用 PowerShell 7 跑 `install.ps1` |
-
-安全复制，不覆盖已有文件：
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -TargetRoot <项目目录> -Tools codex -Apply
-```
-
-完整接入，包含项目识别、quick-ref 初始化、多项目处理和动态瘦身：
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -TargetRoot <项目目录> -Tools codex -Onboard -Apply
-```
-
-需要 Git 分支 / 初始基线 commit 时，显式开启：
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -TargetRoot <项目目录> -Tools codex -Onboard -ManageGit -Apply
-```
-
-同步已安装项目的核心规范：
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -TargetRoot <项目目录或父目录> -Sync -Apply
-```
-
 ## 验证
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\validate.ps1
 ```
 
-验证覆盖结构、链接、Skill 格式、动态路由 frontmatter、安装器行为和 Git 提交门禁。
+验证覆盖结构、链接、Skill 格式、动态路由 frontmatter、快速安装产物、更新同步和 Git 提交门禁。
 
 ## 详细文档
 
