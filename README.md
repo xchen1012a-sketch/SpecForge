@@ -2,7 +2,7 @@
 
 SpecForge 是一套 AI 项目协作规范模板，核心目标是：**让 AI 按需读取上下文，而不是每次小改动都从头读完整项目。**
 
-它适合 Claude Code、Codex、Cursor、Copilot、Windsurf、Cline、Aider、Gemini 等能读取项目文件的 AI 工具。
+它适合 Claude Code、Codex、Cursor、Copilot 等工具；Windsurf/Cline/Aider/Gemini 通过 adapters/generic 通用入口使用。
 
 ## 核心亮点
 
@@ -25,6 +25,12 @@ SpecForge 是一套 AI 项目协作规范模板，核心目标是：**让 AI 按
 | 普通功能改动 | `quick-ref.md` + `project-map.md` + `core-lite/` |
 | API / 权限 / 数据 / 跨端 | 按需加载 `core/`、`contracts/`、`stacks/` |
 | 首次接入 / 审计 / 重构规划 | 允许完整扫描，但必须说明原因 |
+
+## before/after
+
+不用 SpecForge：AI 容易先全量扫项目，再输出长篇、不聚焦的报告。
+
+使用 SpecForge：AI 先读 `quick-ref.md`；缺失时才进入接入流程，只问必要确认项，并按输出协议给短版结论。
 
 ## 快速安装
 

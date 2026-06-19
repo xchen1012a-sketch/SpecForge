@@ -172,61 +172,7 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 
 ## 1.7 多 AI 并行协作（Multi-AI Coordination）
 
-允许多个 AI 同时修改**不同模块**的代码，**禁止**多个 AI 同时修改同一个文件。
-
-### 启动协议（每次改代码前必须执行）
-
-1. **扫描活动会话**：读取 `.ai-spec/sessions/` 下所有 `active` 状态的文件。
-2. **声明修改范围**：列出将要修改的文件路径（相对 `PROJECT_ROOT`），写入自己的 session 文件。
-3. **冲突检测**：逐文件比对，若任何文件已被其他 active session 声明，立即停止并向用户报告冲突。
-4. **无冲突则继续**：写入自己的 session 文件（`status: active`），开始修改代码。
-5. **完成后释放**：修改完成并验证后，将 session 文件 `status` 改为 `completed`，或删除文件。
-
-### Session 文件格式
-
-文件路径：`.ai-spec/sessions/{ai-tool}-{timestamp}.md`
-
-```markdown
-# Active Session
-- ai: Claude Code（或 Codex、Cursor 等）
-- branch: feature/payment-module
-- started: 2026-06-19T15:30:00+08:00
-- status: active
-- files:
-  - backend/src/service/PaymentService.java
-  - backend/src/controller/PaymentController.java
-  - backend/src/mapper/PaymentMapper.xml
-- note: 支付模块重构，不碰订单模块
-```
-
-### 状态流转
-
-```text
-active → completed（正常结束）
-active → abandoned（AI 异常退出，用户手动标记）
-```
-
-### 冲突报告模板
-
-检测到冲突时输出：
-
-```markdown
-## 文件冲突
-以下文件已被其他 AI 占用，无法并行修改：
-
-| 冲突文件 | 占用者 | 分支 | 开始时间 |
-|---|---|---|---|
-| backend/src/service/OrderService.java | Codex | feature/order-refactor | 15:30 |
-
-建议：等待对方完成后重试，或联系对方确认是否可以共享。
-```
-
-### 安全规则
-
-- 同名文件冲突 = **硬阻止**，不允许「只看不改」的变通。
-- 用户可手动删除 `.ai-spec/sessions/` 中的文件强制释放（仅在确认对方已停止时）。
-- `.ai-spec/sessions/` 不入 git（AI 应在 `.gitignore` 中追加该路径）。
-- session 文件在分支切换或 git stash/pop 后应重新检查冲突。
+允许多个 AI 修改不同模块，禁止同时修改同一文件。需要并行协作或检测到 `.ai-spec/sessions/` 时，读取 `workflows/session-coordination.md`。工具不会自动执行锁，AI 必须主动读写 session 文件。
 
 ## 2. 项目阶段识别（Project Stage Detection）
 
