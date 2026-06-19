@@ -213,7 +213,8 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 
 | 任务 | 必读 |
 |---|---|
-| 任意代码修改 | `core/architecture.md`、`core/security-standard.md`、`core/delivery-standard.md`、`business/business-rules.md`、`business/project-map.md` |
+| 任意代码修改（默认） | `core/architecture.md`、`core/security-standard.md`、`core/delivery-standard.md`、`business/business-rules.md`、`business/project-map.md` |
+| 纯视觉/样式修复（仅当同时满足：只改 CSS 色值/间距/字号/圆角/图标/纯文案 typo；不动 JSX/HTML 结构、不动交互逻辑、不动按钮或业务术语文案、不动权限可见性） | 仅 `core/delivery-standard.md` |
 | API/事件/跨端 | `contracts/api-contract-standard.md`、`contracts/integration-standard.md` |
 | 权限/租户/数据范围 | `core/permission-standard.md` |
 | 数据库/迁移 | `core/data-migration-standard.md` |
