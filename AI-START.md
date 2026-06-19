@@ -206,6 +206,18 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 
 禁止假设其它工具支持 Claude 的 `@file`、Codex 的 `AGENTS.md`、特定 Plan Mode、Skill、Hook 或权限语法。能力不存在时，使用普通 Markdown 流程等价执行。
 
+### 3.1 Skill 使用策略
+
+默认接入后使用项目 Skill 优先：`ai-spec.yaml` 中 `ai.skillPolicy.mode: project-first`。
+
+| 模式 | 含义 | 使用规则 |
+| --- | --- | --- |
+| `project-first` | 项目 Skill 优先 | 同名或职责重叠时使用 `.ai-spec/skills/` 及复制到工具目录的项目 Skill；本地 Skill 只补充项目未覆盖的专项能力 |
+| `local-first` | 本地 Skill 优先 | 用户明确说“本地优先”后，AI 更新 `ai-spec.yaml`，优先使用用户本地 Skill；但不得覆盖 AI-START.md、安全门禁、上下文路由和交付协议 |
+| `hybrid` | 两者兼顾 | 用户明确说“两者兼顾”后，AI 更新 `ai-spec.yaml`，项目 Skill 负责流程和红线，本地 Skill 提供专项参考；冲突时项目规则胜出 |
+
+用户可随时要求切换策略。AI 应修改 `ai-spec.yaml` 的 `ai.skillPolicy.mode`，并在交付中说明本次使用了项目 Skill、本地 Skill 或两者兼顾。不得因为本地 Skill 存在而静默绕过项目 Skill。
+
 ## 4. 安全底线（Security Baseline）
 
 以下规则属于 `MUST`，默认不能通过普通项目配置关闭：

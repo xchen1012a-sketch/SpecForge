@@ -58,3 +58,7 @@ context:
 ai:
   tools: [generic]
   specPath: .ai-spec
+  skillPolicy:
+    mode: project-first # project-first | local-first | hybrid
+    allowLocalSkills: true
+    reportSkillSource: true
