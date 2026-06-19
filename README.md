@@ -48,6 +48,14 @@ git clone https://github.com/xchen1012a-sketch/SpecForge.git .ai-spec && rm -rf 
 - **确定性验证**：文件结构、断链、权限和 Skill 格式由脚本检查。
 - **可治理**：规则分为 MUST、SHOULD、MAY、PROJECT 和 EXCEPTION。
 
+## 核心特性
+
+- **多 AI 并行协作**：§1.7 定义了基于 session 的文件锁定协议，多个 AI 同时工作不冲突
+- **动态多项目支持**：§1.5.1 自动检测子项目结构，为每个子项目独立安装规范实例，UUID 共享身份
+- **日常速查卡**：`business/quick-ref.md` 从完整业务规则中自动浓缩 30 行摘要，减少上下文消耗
+- **技术栈动态适配**：根据项目类型自动保留相关 stacks/ 规范，删除无关文件
+- **实时业务规则维护**：§1.6 单文件活文档，带来源标注、可靠度、冲突标记
+
 ## 目录
 
 ```text
