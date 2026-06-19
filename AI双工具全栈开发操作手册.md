@@ -203,3 +203,42 @@ Next AI Instruction：下个 AI 第一件事
 严格遵守 .ai-spec。先读规范和相关代码，不要发散，不改无关文件。
 按契约先行、小步实施、真实验证、分仓提交、交付报告的流程完成。
 ```
+
+## 11. 多 AI 并行协作
+
+允许多个 AI 同时开发，但**禁止同时改同一个文件**。
+
+### 如何让 AI 发现对方
+
+AI 改代码前会自动检查 `.ai-spec/sessions/` 目录（协议见 `AI-START.md §1.7`）。每个活跃的 AI 会在这里留一个 session 文件，声明自己正在改哪些文件。
+
+### 推荐工作方式
+
+```text
+# 同时启动两个 AI，分别开发不同模块：
+
+窗口 A（Claude）：
+  只改 backend/src/service/PaymentService.java 和 PaymentController.java
+  不要碰订单模块的任何文件
+
+窗口 B（Codex）：
+  只改 backend/src/service/OrderService.java 和 OrderController.java
+  不要碰支付模块的任何文件
+```
+
+### 冲突时怎么办
+
+如果一个 AI 报告文件冲突，说明另一个 AI 正在改那些文件。你需要：
+- 等对方完成后再继续
+- 或者手动删除 `.ai-spec/sessions/` 中对端文件（确认对方已停止后）
+- 或者缩小自己的范围，只改未被占用的文件
+
+### 文件结构
+
+```text
+.ai-spec/sessions/
+├── claude-code-20260619T153000.md   # Claude 的活跃声明
+└── codex-20260619T153500.md         # Codex 的活跃声明
+```
+
+这些文件不入 git，是纯运行时的协调标记。

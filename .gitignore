@@ -17,6 +17,9 @@ desktop.ini
 .env
 .env.local
 
+# Multi-AI coordination sessions (runtime, not versioned)
+.ai-spec/sessions/
+
 # Build / temp
 node_modules/
 __pycache__/

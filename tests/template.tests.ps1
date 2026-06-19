@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $failures = [System.Collections.Generic.List[string]]::new()
@@ -50,8 +50,12 @@ foreach ($relativePath in $requiredFiles) {
     Assert-True (Test-Path -LiteralPath (Join-Path $root $relativePath) -PathType Leaf) "Missing file: $relativePath"
 }
 
+# Root .md whitelist: AI-START.md, README.md, and any manual with prefix "AI"
 $rootMarkdown = @(Get-ChildItem -LiteralPath $root -File -Filter '*.md' | Select-Object -ExpandProperty Name)
-$unexpectedRootMarkdown = @($rootMarkdown | Where-Object { $_ -notin @('AI-START.md', 'README.md') })
+$allowedRootMarkdown = @('AI-START.md', 'README.md')
+$unexpectedRootMarkdown = @($rootMarkdown | Where-Object {
+    $_ -notin $allowedRootMarkdown -and $_ -notmatch '^AI.*\.md$'
+})
 Assert-True ($unexpectedRootMarkdown.Count -eq 0) "Unexpected root Markdown: $($unexpectedRootMarkdown -join ', ')"
 
 $start = Read-ProjectFile 'AI-START.md'
