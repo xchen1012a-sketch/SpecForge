@@ -129,6 +129,8 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 
 ```json
 {
+  "templateSource": "SpecForge",
+  "templateVersion": 2,
   "multiProjectId": "<uuid>",
   "projects": [
     {
@@ -150,6 +152,7 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 4. **核心文件一致性**：以下文件在所有实例中**内容完全一致**（从同一模板版本复制）：
    - `AI-START.md`、`README.md`
    - `core/` 全部
+   - `core-lite/` 全部
    - `governance/` 全部
    - `skills/` 全部
    - `workflows/` 全部
@@ -198,7 +201,10 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 #### 后续会话行为
 
 - **子项目目录启动**：正常启动协议，`ai-spec.yaml` 中的 `multiProjectId` 标识多项目身份。
-- **父目录启动**：检测到 `.specforge.json` 存在，询问用户本次涉及哪个子项目（或"全部"）。
+- **父目录启动**：检测到 `.specforge.json` 存在，先读取 `templateVersion` 和子项目列表，再询问用户本次涉及哪个子项目（或"全部"）。
+- **版本一致性检查**：父目录 `.specforge.json.templateVersion` 必须与子项目 `.ai-spec/ai-spec.yaml` 中 `spec.templateVersion` 一致；不一致时必须报告父目录版本、子项目版本和受影响项目。
+- **同步建议**：版本不一致或用户明确要求更新规范时，建议执行 `scripts/install.ps1 -TargetRoot <父目录或项目目录> -Sync`；实际覆盖核心文件必须由用户确认后再追加 `-Apply`。
+- **覆盖边界**：`install.ps1 -Sync` 只同步核心一致文件，不同步 `ai-spec.yaml`、`business/`、`stacks/`、`adapters/`；AI 不得自动覆盖项目差异文件。
 - **跨项目协调**：API 契约变更时，主动检查兄弟项目的 `contracts/`。
 
 ## 1.6 项目逻辑的实时维护

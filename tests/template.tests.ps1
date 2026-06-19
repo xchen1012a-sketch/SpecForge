@@ -82,6 +82,9 @@ Assert-True ($start.Contains('tiny | small | medium | large | enterprise')) 'AI-
 Assert-True ($start.Contains('Git 提交硬性门禁')) 'AI-START.md missing hard git commit gate'
 Assert-True ($start.Contains('只提交纯代码')) 'AI-START.md missing pure-code commit rule'
 Assert-True ($start.Contains('暂存区必须检查')) 'AI-START.md missing staging-area check rule'
+Assert-True ($start.Contains('templateVersion')) 'AI-START.md missing template version consistency rule'
+Assert-True ($start.Contains('install.ps1 -Sync')) 'AI-START.md missing sync command rule'
+Assert-True ($start.Contains('不得自动覆盖')) 'AI-START.md missing no-automatic-sync-overwrite rule'
 foreach ($mode in @('L0 快速恢复', 'L1 机械改动', 'L2 标准改动', 'L3 高风险改动', 'L4 接入/审计')) {
     Assert-True ($start.Contains($mode)) "AI-START.md missing context budget mode: $mode"
 }

@@ -12,6 +12,7 @@ SpecForge 是一套 AI 项目协作规范模板，核心目标是：**让 AI 按
 - **轻量核心规范**：`core-lite/` 处理简单任务，避免常驻大文档。
 - **完整工程约束**：高风险任务按需加载 `core/`、`contracts/`、`stacks/`。
 - **接入时自动瘦身**：根据项目结构裁剪业务规则、技术栈规范和无关章节。
+- **多项目版本同步**：父目录 `.specforge.json` 和子项目 `ai-spec.yaml` 记录 `templateVersion`，可用 `-Sync` 更新核心规范。
 - **安全提交门禁**：提交前必须检查暂存区，过滤 `.env`、IDE 配置、本地设置、构建产物和真实凭证。
 
 ## 动态加载策略
@@ -66,6 +67,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -T
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -TargetRoot <项目目录> -Tools codex -Onboard -ManageGit -Apply
 ```
 
+同步已安装项目的核心规范：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -TargetRoot <项目目录或父目录> -Sync -Apply
+```
+
 ## 验证
 
 ```powershell
@@ -79,4 +86,3 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\validate.ps1
 - [AI-START.md](AI-START.md)
 - [使用指南](docs/使用指南.md)
 - [配置示例](ai-spec.example.yaml)
-

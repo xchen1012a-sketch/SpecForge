@@ -12,6 +12,8 @@ param(
 
     [switch]$Onboard,
 
+    [switch]$Sync,
+
     [switch]$ManageGit,
 
     [string]$BranchName = 'chore/specforge-onboard'
@@ -38,6 +40,18 @@ if ($targetFullPath -eq [System.IO.Path]::GetFullPath($sourceRoot)) {
 $actions = [System.Collections.Generic.List[string]]::new()
 $conflicts = [System.Collections.Generic.List[string]]::new()
 $installReports = [System.Collections.Generic.List[hashtable]]::new()
+
+function Get-TemplateVersion {
+    $examplePath = Join-Path $sourceRoot 'ai-spec.example.yaml'
+    $content = Get-Content -Raw -Encoding UTF8 -LiteralPath $examplePath
+    $match = [regex]::Match($content, '(?m)^  templateVersion:\s*(\d+)')
+    if (-not $match.Success) {
+        throw 'Cannot determine SpecForge templateVersion from ai-spec.example.yaml'
+    }
+    return [int]$match.Groups[1].Value
+}
+
+$templateVersion = Get-TemplateVersion
 
 function Read-FileIfExists {
     param([string]$Path)
@@ -270,6 +284,7 @@ function Write-AiSpecProfile {
         $inventory = Get-ProjectInventory -ProjectRoot $ProjectRoot -IsMultiProject ([bool]$MultiProjectId)
 
         $profile = $profile -replace '(?m)^  multiProjectId: null.*$', "  multiProjectId: $multiValue       # multi-project shared ID"
+        $profile = $profile -replace '(?m)^  templateVersion:\s*\d+.*$', "  templateVersion: $templateVersion         # installed SpecForge template version"
         $profile = $profile -replace 'name: example-project', "name: $projectName"
         $profile = $profile -replace 'stage: new # new \| existing \| in-progress', "stage: $Stage # new | existing | in-progress"
         $profile = $profile -replace 'type: generic # backend \| frontend \| fullstack \| mobile \| library-sdk \| cli \| data-platform \| ai-llm \| generic', "type: $ProjectType # backend | frontend | fullstack | mobile | library-sdk | cli | data-platform | ai-llm | generic"
@@ -791,12 +806,111 @@ function Write-SpecForgeIndex {
             }
         }
         $index = [ordered]@{
+            templateSource = 'SpecForge'
+            templateVersion = $templateVersion
             multiProjectId = $MultiProjectId
             projects = $indexProjects
         }
         $json = $index | ConvertTo-Json -Depth 6
         [System.IO.File]::WriteAllText($indexPath, $json, [System.Text.UTF8Encoding]::new($false))
     }
+}
+
+function Get-SyncRelativePaths {
+    $relativePaths = [System.Collections.Generic.List[string]]::new()
+    foreach ($file in @('AI-START.md', 'README.md', 'scripts\validate.ps1')) {
+        $relativePaths.Add($file)
+    }
+
+    foreach ($directory in @('core', 'core-lite', 'contracts', 'governance', 'skills', 'workflows')) {
+        $sourceDirectory = Join-Path $sourceRoot $directory
+        if (Test-Path -LiteralPath $sourceDirectory -PathType Container) {
+            Get-ChildItem -LiteralPath $sourceDirectory -Recurse -File | ForEach-Object {
+                $relativePaths.Add($_.FullName.Substring($sourceRoot.Length + 1))
+            }
+        }
+    }
+
+    return @($relativePaths | Select-Object -Unique)
+}
+
+function Copy-SyncFile {
+    param(
+        [string]$SpecRoot,
+        [string]$RelativePath
+    )
+
+    $source = Join-Path $sourceRoot $RelativePath
+    $destination = Join-Path $SpecRoot $RelativePath
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+        return
+    }
+
+    $script:actions.Add("SYNC $destination")
+    if ($Apply) {
+        $parent = Split-Path -Parent $destination
+        New-Item -ItemType Directory -Force -Path $parent | Out-Null
+        Copy-Item -LiteralPath $source -Destination $destination -Force
+    }
+}
+
+function Sync-SpecInstance {
+    param([string]$SpecRoot)
+
+    if (-not (Test-Path -LiteralPath $SpecRoot -PathType Container)) {
+        $script:conflicts.Add("Missing .ai-spec instance: $SpecRoot")
+        return
+    }
+
+    foreach ($relativePath in Get-SyncRelativePaths) {
+        Copy-SyncFile -SpecRoot $SpecRoot -RelativePath $relativePath
+    }
+}
+
+function Update-SpecForgeIndexVersion {
+    param([string]$IndexPath)
+
+    $script:actions.Add("UPDATE $IndexPath templateVersion=$templateVersion")
+    if ($Apply) {
+        $index = Get-Content -Raw -Encoding UTF8 -LiteralPath $IndexPath | ConvertFrom-Json
+        if (-not ($index.PSObject.Properties.Name -contains 'templateSource')) {
+            $index | Add-Member -NotePropertyName 'templateSource' -NotePropertyValue 'SpecForge'
+        }
+        else {
+            $index.templateSource = 'SpecForge'
+        }
+        if (-not ($index.PSObject.Properties.Name -contains 'templateVersion')) {
+            $index | Add-Member -NotePropertyName 'templateVersion' -NotePropertyValue $templateVersion
+        }
+        else {
+            $index.templateVersion = $templateVersion
+        }
+        $json = $index | ConvertTo-Json -Depth 8
+        [System.IO.File]::WriteAllText($IndexPath, $json, [System.Text.UTF8Encoding]::new($false))
+    }
+}
+
+function Invoke-SpecSync {
+    param([string]$RootDir)
+
+    $indexPath = Join-Path $RootDir '.specforge.json'
+    if (Test-Path -LiteralPath $indexPath -PathType Leaf) {
+        Update-SpecForgeIndexVersion -IndexPath $indexPath
+        $index = Get-Content -Raw -Encoding UTF8 -LiteralPath $indexPath | ConvertFrom-Json
+        foreach ($project in @($index.projects)) {
+            $projectRoot = Join-Path $RootDir ([string]$project.path)
+            Sync-SpecInstance -SpecRoot (Join-Path $projectRoot '.ai-spec')
+        }
+        return
+    }
+
+    $singleSpecRoot = Join-Path $RootDir '.ai-spec'
+    if (Test-Path -LiteralPath $singleSpecRoot -PathType Container) {
+        Sync-SpecInstance -SpecRoot $singleSpecRoot
+        return
+    }
+
+    throw 'Sync requires either a parent .specforge.json or a local .ai-spec directory.'
 }
 
 function Invoke-GitOnboarding {
@@ -822,6 +936,20 @@ function Invoke-GitOnboarding {
         }
         & git -C $RepositoryRoot switch -c $BranchName | Out-Null
     }
+}
+
+if ($Sync) {
+    Invoke-SpecSync -RootDir $targetFullPath
+    Write-Host "AI Spec sync plan" -ForegroundColor Cyan
+    Write-Host "Target: $targetFullPath"
+    Write-Host "TemplateVersion: $templateVersion"
+    Write-Host "Apply: $([bool]$Apply)"
+    foreach ($action in $actions) { Write-Host "- $action" }
+    if ($conflicts.Count -gt 0) {
+        Write-Host "Conflicts / warnings:" -ForegroundColor Yellow
+        foreach ($conflict in $conflicts) { Write-Host "- $conflict" -ForegroundColor Yellow }
+    }
+    exit 0
 }
 
 if ($Onboard -and $ManageGit) {

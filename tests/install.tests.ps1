@@ -59,12 +59,15 @@ try {
     Assert-Test (Test-Path -LiteralPath (Join-Path $backend 'AGENTS.md')) 'Onboard mode did not create backend Codex entry'
 
     $index = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $monoRoot '.specforge.json') | ConvertFrom-Json
+    Assert-Test ($index.templateVersion -eq 2) 'Parent .specforge.json missing templateVersion'
+    Assert-Test ($index.templateSource -eq 'SpecForge') 'Parent .specforge.json missing templateSource'
     Assert-Test (-not [string]::IsNullOrWhiteSpace([string]$index.multiProjectId)) 'Parent .specforge.json missing multiProjectId'
     Assert-Test ($index.projects.Count -eq 2) 'Parent .specforge.json should contain two projects'
     Assert-Test (@($index.projects.path) -contains 'frontend') 'Parent .specforge.json missing frontend project'
     Assert-Test (@($index.projects.path) -contains 'backend') 'Parent .specforge.json missing backend project'
 
     $frontendProfile = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\ai-spec.yaml')
+    Assert-Test ($frontendProfile.Contains('templateVersion: 2')) 'Frontend profile did not record templateVersion'
     Assert-Test ($frontendProfile.Contains('type: frontend')) 'Frontend profile did not record frontend type'
     Assert-Test ($frontendProfile.Contains("multiProjectId: $($index.multiProjectId)")) 'Frontend profile did not receive shared multiProjectId'
     Assert-Test ($frontendProfile.Contains('quickRefStatus: TEMPLATE_PLACEHOLDER')) 'Frontend profile missing quick-ref placeholder status'
@@ -104,6 +107,24 @@ try {
     Assert-Test (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\adapters\codex')) 'Onboard mode did not retain selected adapter'
     Assert-Test (-not (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\adapters\cursor'))) 'Onboard mode kept unused adapter'
     & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null
+
+    $frontendStart = Join-Path $frontend '.ai-spec\AI-START.md'
+    $frontendRulesPath = Join-Path $frontend '.ai-spec\business\business-rules.md'
+    $frontendProfilePath = Join-Path $frontend '.ai-spec\ai-spec.yaml'
+    [System.IO.File]::WriteAllText($frontendStart, 'old-start', [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($frontendRulesPath, 'project-owned-business-rules', [System.Text.UTF8Encoding]::new($false))
+    $profileBeforeSync = Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendProfilePath
+
+    $syncPlan = & $installer -TargetRoot $monoRoot -Sync 6>&1
+    $syncPlanText = [string]::Join("`n", @($syncPlan))
+    Assert-Test ($syncPlanText.Contains('SYNC')) 'Sync dry-run did not report planned core-file updates'
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendStart) -eq 'old-start') 'Sync dry-run modified AI-START.md'
+
+    & $installer -TargetRoot $monoRoot -Sync -Apply *> $null
+
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendStart).Contains('Startup Protocol')) 'Sync did not refresh AI-START.md'
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendRulesPath) -eq 'project-owned-business-rules') 'Sync overwrote project-owned business rules'
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendProfilePath) -eq $profileBeforeSync) 'Sync overwrote ai-spec.yaml'
 
     Write-Host 'Installer integration tests passed.' -ForegroundColor Green
 }
