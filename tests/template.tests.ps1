@@ -60,7 +60,9 @@ $requiredFiles = @(
     'scripts/install.ps1',
     'scripts/update.ps1',
     'scripts/update.cmd',
+    'scripts/update.sh',
     'scripts/maintain-context.ps1',
+    'scripts/maintain-context.sh',
     'scripts/audit-global-context.ps1',
     'scripts/validate.ps1'
 )
@@ -110,6 +112,8 @@ Assert-True ($start.Contains('workflows/project-planning.md')) 'AI-START.md miss
 Assert-True ($start.Contains('workflows/context-maintenance.md')) 'AI-START.md missing lazy context maintenance route'
 Assert-True ($start.Contains('单次读取上限为 250 行')) 'AI-START.md missing large-file chunk read gate'
 Assert-True ($start.Contains('SpecForge 仅允许安装到项目目录')) 'AI-START.md missing project-only installation boundary'
+Assert-True ($start.Contains('三层约束模型')) 'AI-START.md missing constraint model boundary'
+Assert-True ($start.Contains('证据不足') -and $start.Contains('未证实')) 'AI-START.md missing insufficient-evidence reporting rule'
 Assert-True ($start.Contains('项目存在 API/数据库不构成升级理由')) 'AI-START.md still escalates every backend task to L3'
 Assert-True ($start.Contains('公开 API 契约')) 'AI-START.md missing concrete API escalation trigger'
 Assert-True ($start.Contains('Skill 使用策略')) 'AI-START.md missing skill policy section'
@@ -165,6 +169,8 @@ Assert-True ($outputProtocol.Contains('表格最多 3 列')) 'output protocol mi
 Assert-True ($outputProtocol.Contains('风险清单优先用编号列表')) 'output protocol missing numbered risk list rule'
 Assert-True ($outputProtocol.Contains('默认使用简体中文')) 'output protocol missing Simplified Chinese default'
 Assert-True ($outputProtocol.Contains('实际修改公开契约')) 'output protocol still escalates based on project capabilities instead of task changes'
+Assert-True ($outputProtocol.Contains('输出给用户必须抓重点')) 'output protocol missing lightweight user-facing report rule'
+Assert-True ($outputProtocol.Contains('未证实：')) 'output protocol missing unverified evidence line'
 
 $sessionWorkflow = Read-ProjectFile 'workflows/session-coordination.md'
 Assert-True ($sessionWorkflow.Contains('工具不会自动执行锁')) 'session workflow missing non-automatic-lock warning'
@@ -225,6 +231,7 @@ Assert-True ($specExample.Contains('mode: project-first')) 'ai-spec.example.yaml
 Assert-True ($specExample.Contains('outputLanguage:')) 'ai-spec.example.yaml missing output language policy'
 Assert-True ($specExample.Contains('default: zh-CN')) 'ai-spec.example.yaml does not default to Simplified Chinese'
 Assert-True ($specExample.Contains('locked: true')) 'ai-spec.example.yaml does not lock the default language'
+Assert-True ($specExample.Contains('overrideOnlyByExplicitUserRequest: true')) 'ai-spec.example.yaml does not allow only explicit user language override'
 Assert-True ($specExample.Contains('maintenance:')) 'ai-spec.example.yaml missing context maintenance configuration'
 Assert-True ($specExample.Contains('strategy: lazy')) 'ai-spec.example.yaml does not use lazy maintenance'
 Assert-True ($specExample.Contains('autoApply: safe-only')) 'ai-spec.example.yaml maintenance is not stability-first'
@@ -239,6 +246,9 @@ Assert-True (-not $readme.Contains('安装器能力差异')) 'README should not 
 Assert-True (-not $readme.Contains('scripts\install.ps1')) 'README should not expose install.ps1 as the user entry'
 Assert-True ($readme.Contains('快速安装')) 'README missing quick install section'
 Assert-True ($readme.Contains('不需要手动跑额外脚本')) 'README missing no-extra-script guidance after quick install'
+Assert-True ($readme.Contains('能力边界')) 'README missing capability boundary section'
+Assert-True ($readme.Contains('仍需要人工 review')) 'README overstates AI behavior guarantees'
+Assert-True ($readme.Contains('只有用户明确要求时')) 'README missing explicit language override rule'
 Assert-True ($readme.Contains('切换 AI')) 'README missing AI switch guidance'
 Assert-True ($readme.Contains('不要重新安装、重新接入或全量扫描')) 'README does not prevent repeated onboarding after AI switch'
 Assert-True ($readme.Contains('docs/plans/current.md')) 'README AI switch prompt missing current phase plan'
@@ -252,7 +262,9 @@ Assert-True ($readme.Contains('不是首次接入')) 'README rule-refresh prompt
 Assert-True ($readme.Contains('不要重新全量扫描项目')) 'README rule-refresh prompt does not prevent a full rescan'
 Assert-True ($readme.Contains('.ai-spec\scripts\update.ps1 -Apply')) 'README missing PowerShell update command'
 Assert-True ($readme.Contains('.ai-spec\scripts\update.cmd -Apply')) 'README missing CMD update command'
+Assert-True ($readme.Contains('.ai-spec/scripts/update.sh --apply')) 'README missing Bash update command'
 Assert-True ($readme.Contains('maintain-context.ps1')) 'README missing context maintenance command'
+Assert-True ($readme.Contains('.ai-spec/scripts/maintain-context.sh --apply')) 'README missing Bash context maintenance command'
 Assert-True ($readme.Contains('惰性维护')) 'README missing lazy maintenance explanation'
 Assert-True ($readme.Contains('只安装到当前项目')) 'README does not state the project-only boundary'
 Assert-True ($readme.Contains('不会写入 `~/.claude/rules/`')) 'README does not reject global rule installation'
@@ -293,10 +305,18 @@ $updateCmd = Read-ProjectFile 'scripts/update.cmd'
 Assert-True ($updateCmd.Contains('update.ps1')) 'update.cmd does not delegate to the PowerShell updater'
 Assert-True ($updateCmd.Contains('%*')) 'update.cmd does not forward update arguments'
 
+$updateSh = Read-ProjectFile 'scripts/update.sh'
+Assert-True ($updateSh.Contains('git clone') -and $updateSh.Contains('SpecForge.git')) 'update.sh does not pull the latest SpecForge source'
+Assert-True ($updateSh.Contains('--sync')) 'update.sh does not use the safe sync path'
+Assert-True ($updateSh.Contains('--apply')) 'update.sh missing explicit apply gate'
+Assert-True ($updateSh.Contains('mktemp')) 'update.sh does not isolate temporary clone'
+
 $installPs1 = Read-ProjectFile 'scripts/install.ps1'
 Assert-True ($installPs1.Contains("'scripts\update.ps1'")) 'install.ps1 sync does not refresh update.ps1'
 Assert-True ($installPs1.Contains("'scripts\update.cmd'")) 'install.ps1 sync does not refresh update.cmd'
+Assert-True ($installPs1.Contains("'scripts\update.sh'")) 'install.ps1 sync does not refresh update.sh'
 Assert-True ($installPs1.Contains("'scripts\maintain-context.ps1'")) 'install.ps1 sync does not refresh maintain-context.ps1'
+Assert-True ($installPs1.Contains("'scripts\maintain-context.sh'")) 'install.ps1 sync does not refresh maintain-context.sh'
 Assert-True ($installPs1.Contains("'scripts\audit-global-context.ps1'")) 'install.ps1 sync does not refresh audit-global-context.ps1'
 Assert-True ($installPs1.Contains('forbiddenGlobalRoots')) 'install.ps1 does not reject global AI configuration targets'
 
@@ -307,6 +327,13 @@ Assert-True ($maintainContext.Contains('COMPACT_REQUIRED')) 'maintain-context.ps
 Assert-True ($maintainContext.Contains('status: completed')) 'maintain-context.ps1 does not identify safe archive candidates'
 Assert-True ($maintainContext.Contains('archive')) 'maintain-context.ps1 does not archive completed runtime files'
 Assert-True (-not $maintainContext.Contains('business-rules.md -Force')) 'maintain-context.ps1 can destructively remove business rules'
+
+$maintainContextSh = Read-ProjectFile 'scripts/maintain-context.sh'
+Assert-True ($maintainContextSh.Contains('maintenanceDue')) 'maintain-context.sh does not use the lazy due marker'
+Assert-True ($maintainContextSh.Contains('--apply')) 'maintain-context.sh missing dry-run/apply gate'
+Assert-True ($maintainContextSh.Contains('COMPACT_REQUIRED')) 'maintain-context.sh does not report oversized semantic files'
+Assert-True ($maintainContextSh.Contains('completed')) 'maintain-context.sh does not identify safe archive candidates'
+Assert-True ($maintainContextSh.Contains('archive')) 'maintain-context.sh does not archive completed runtime files'
 
 $globalAudit = Read-ProjectFile 'scripts/audit-global-context.ps1'
 Assert-True ($globalAudit.Contains('GLOBAL_CONTEXT_WARNING')) 'global context audit missing concise warning marker'
@@ -362,6 +389,12 @@ Assert-True ($devImplementationSkill.Contains('计划自动触发门禁')) 'dev 
 Assert-True ($devImplementationSkill.Contains('business/quick-ref.md')) 'dev implementation skill forces the full startup document'
 Assert-True ($devImplementationSkill.Contains('docs/plans/current.md')) 'dev implementation skill does not follow the active development plan'
 Assert-True ($devImplementationSkill.Contains('相关章节')) 'dev implementation skill loads all business rules instead of relevant sections'
+
+$specEvaluatorSkill = Read-ProjectFile 'skills/spec-evaluator/SKILL.md'
+Assert-True ($specEvaluatorSkill.Contains('证据不足封顶')) 'spec evaluator missing insufficient-evidence score caps'
+Assert-True ($specEvaluatorSkill.Contains('最高 6 分')) 'spec evaluator does not cap score when evidence is missing'
+Assert-True ($specEvaluatorSkill.Contains('未证实')) 'spec evaluator does not require unverified findings'
+Assert-True ($specEvaluatorSkill.Contains('最多列 3 个关键问题')) 'spec evaluator output can become too verbose'
 
 $productArchitectSkill = Read-ProjectFile 'skills/product-architect/SKILL.md'
 Assert-True ($productArchitectSkill.Contains('business/quick-ref.md')) 'product architect skill forces the full startup document'

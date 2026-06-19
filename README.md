@@ -37,6 +37,16 @@ SpecForge 只安装到当前项目，不会写入 `~/.claude/rules/`、`~/.codex
 
 使用 SpecForge：AI 先读 `quick-ref.md`；缺失时才进入接入流程，只问必要确认项，并按输出协议给短版结论。
 
+## 能力边界
+
+SpecForge 是项目级协作规范，不是模型行为的绝对保证。它通过 quick-ref、动态门禁、验证脚本、交付报告和 Git diff 提高可审计性；高风险改动仍需要人工 review。
+
+约束分三层：工具权限负责拦危险文件/命令，验证脚本负责结构和门禁，AI 负责报告读取范围、升级原因和未证实项。
+
+首次接入、审计、重构规划会比日常任务重，因为 AI 需要建立项目画像。接入完成后，普通会话应优先走 `quick-ref.md`，按证据逐级加载，不应每次全量扫描。
+
+默认输出简体中文；只有用户明确要求时，才允许当前任务或当前项目切换到其它语言。
+
 ## 快速安装
 
 在目标项目根目录执行：
@@ -95,6 +105,13 @@ CMD：
 .ai-spec\scripts\update.cmd -Apply
 ```
 
+Bash：
+
+```bash
+bash .ai-spec/scripts/update.sh
+bash .ai-spec/scripts/update.sh --apply
+```
+
 更新完成后对 AI 说：
 
 ```text
@@ -108,6 +125,13 @@ AI 日常只检查 quick-ref 中一行 `maintenanceDue`；未到期不扫描。�
 ```powershell
 .\.ai-spec\scripts\maintain-context.ps1
 .\.ai-spec\scripts\maintain-context.ps1 -Apply
+```
+
+Bash：
+
+```bash
+bash .ai-spec/scripts/maintain-context.sh
+bash .ai-spec/scripts/maintain-context.sh --apply
 ```
 
 tiny/small 每 30 天、medium 每 14 天、large/enterprise 每 7 天检查一次。业务规则、活动计划、验收证据和源码不会被自动删除；臃肿语义文件只报告并按工作流做可回滚拆分。

@@ -284,7 +284,9 @@ try {
     [System.IO.File]::WriteAllText((Join-Path $frontend '.ai-spec\AI-START.md'), 'stale-before-updater', [System.Text.UTF8Encoding]::new($false))
     & (Join-Path $frontend '.ai-spec\scripts\update.ps1') -TargetRoot $frontend -SourceRoot $root -Apply *> $null
     Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\AI-START.md')) -eq $startBeforeUpdater) 'PowerShell updater did not refresh existing rules'
-    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendProfilePath) -eq $profileBeforeUpdater) 'PowerShell updater overwrote ai-spec.yaml'
+    $profileAfterUpdater = Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendProfilePath
+    Assert-Test ($profileAfterUpdater.Contains('name: frontend')) 'PowerShell updater changed project identity in ai-spec.yaml'
+    Assert-Test ($profileAfterUpdater.Contains('overrideOnlyByExplicitUserRequest: true')) 'PowerShell updater did not add language compatibility default'
     Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\business\business-rules.md')) -eq $rulesBeforeUpdater) 'PowerShell updater overwrote business rules'
 
     $maintenanceQuickRefPath = Join-Path $frontend '.ai-spec\business\quick-ref.md'
@@ -365,7 +367,9 @@ try {
 
     Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendStart).Contains('Startup Protocol')) 'Sync did not refresh AI-START.md'
     Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendRulesPath) -eq 'project-owned-business-rules') 'Sync overwrote project-owned business rules'
-    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendProfilePath) -eq $profileBeforeSync) 'Sync overwrote ai-spec.yaml'
+    $profileAfterSync = Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendProfilePath
+    Assert-Test ($profileAfterSync.Contains('name: frontend')) 'Sync changed project identity in ai-spec.yaml'
+    Assert-Test ($profileAfterSync.Contains('overrideOnlyByExplicitUserRequest: true')) 'Sync did not preserve/add language compatibility default'
 
     $legacyProfile = $profileBeforeSync `
         -replace '(?m)^  scope: project-only.*\r?\n', '' `
@@ -383,6 +387,7 @@ try {
     Assert-Test ($migratedProfile.Contains('scope: project-only')) 'Sync did not add project-only scope to a legacy profile'
     Assert-Test ($migratedProfile.Contains('strategy: lazy')) 'Sync did not add maintenance defaults to a legacy profile'
     Assert-Test ($migratedProfile.Contains('default: zh-CN')) 'Sync did not add language defaults to a legacy profile'
+    Assert-Test ($migratedProfile.Contains('overrideOnlyByExplicitUserRequest: true')) 'Sync did not add explicit language override default to a legacy profile'
     Assert-Test ($migratedProfile.Contains('name: frontend')) 'Compatibility migration changed project identity'
     Assert-Test ($migratedQuickRef.Contains('outputLanguage: zh-CN')) 'Sync did not add the language marker to a legacy quick-ref'
     Assert-Test ($migratedQuickRef -match 'maintenanceDue: \d{4}-\d{2}-\d{2}') 'Sync did not add a due date to a legacy quick-ref'

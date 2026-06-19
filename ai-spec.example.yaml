@@ -69,7 +69,8 @@ ai:
   specPath: .ai-spec
   outputLanguage:
     default: zh-CN
-    locked: true # AI cannot switch because repository content is English; only an explicit user request may override the current task
+    locked: true
+    overrideOnlyByExplicitUserRequest: true # Default is Simplified Chinese; explicit user request may override only the current task/project.
   skillPolicy:
     mode: project-first # project-first | local-first | hybrid
     allowLocalSkills: true

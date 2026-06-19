@@ -999,7 +999,7 @@ function Write-SpecForgeIndex {
 
 function Get-SyncRelativePaths {
     $relativePaths = [System.Collections.Generic.List[string]]::new()
-    foreach ($file in @('AI-START.md', 'README.md', 'scripts\validate.ps1', 'scripts\update.ps1', 'scripts\update.cmd', 'scripts\maintain-context.ps1', 'scripts\audit-global-context.ps1')) {
+    foreach ($file in @('AI-START.md', 'README.md', 'scripts\validate.ps1', 'scripts\update.ps1', 'scripts\update.cmd', 'scripts\update.sh', 'scripts\maintain-context.ps1', 'scripts\maintain-context.sh', 'scripts\audit-global-context.ps1')) {
         $relativePaths.Add($file)
     }
 
@@ -1061,8 +1061,11 @@ function Ensure-InstanceCompatibilityDefaults {
             $updatedProfile = [regex]::Replace($updatedProfile, '(?m)^  projectSizeSignals:', ($maintenanceBlock + $newline + '  projectSizeSignals:'), 1)
         }
         if ($updatedProfile -notmatch '(?m)^  outputLanguage:\s*$') {
-            $languageBlock = "  outputLanguage:${newline}    default: zh-CN${newline}    locked: true"
+            $languageBlock = "  outputLanguage:${newline}    default: zh-CN${newline}    locked: true${newline}    overrideOnlyByExplicitUserRequest: true"
             $updatedProfile = [regex]::Replace($updatedProfile, '(?m)^(  specPath:.*)$', ('$1' + $newline + $languageBlock), 1)
+        }
+        elseif ($updatedProfile -notmatch '(?m)^    overrideOnlyByExplicitUserRequest:\s*true\s*$') {
+            $updatedProfile = [regex]::Replace($updatedProfile, '(?m)^(    locked:\s*true.*)$', ('$1' + $newline + '    overrideOnlyByExplicitUserRequest: true'), 1)
         }
         if ($updatedProfile -notmatch '(?m)^  skillPolicy:\s*$') {
             $updatedProfile = $updatedProfile.TrimEnd() + $newline + "  skillPolicy:${newline}    mode: project-first${newline}    allowLocalSkills: true${newline}    reportSkillSource: true" + $newline

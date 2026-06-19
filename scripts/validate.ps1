@@ -28,6 +28,8 @@ else {
         'core-lite\testing-lite.md',
         'scripts\audit-global-context.ps1',
         'scripts\maintain-context.ps1',
+        'scripts\maintain-context.sh',
+        'scripts\update.sh',
         'scripts\validate.ps1'
     )) {
         if (-not (Test-Path -LiteralPath (Join-Path $root $requiredPath))) {
@@ -54,6 +56,9 @@ else {
     }
     if (-not ($aiSpecContent -match '(?m)^    locked:\s*true\b')) {
         throw 'Missing ai.outputLanguage.locked: true in ai-spec.yaml.'
+    }
+    if (-not ($aiSpecContent -match '(?m)^    overrideOnlyByExplicitUserRequest:\s*true\b')) {
+        throw 'Missing ai.outputLanguage.overrideOnlyByExplicitUserRequest: true in ai-spec.yaml.'
     }
     if (-not ($aiSpecContent -match '(?m)^  maintenance:\s*$') -or -not ($aiSpecContent -match '(?m)^    strategy:\s*lazy\s*$')) {
         throw 'Missing context.maintenance.strategy: lazy in ai-spec.yaml.'
