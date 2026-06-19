@@ -45,10 +45,10 @@
 2. **同步规范文件到 `.ai-spec/`**：
    - 缺失文件直接复制
    - 已存在文件按内容差异覆盖规范正文：`core/`、`contracts/`、`stacks/`、`skills/`、`governance/`、`workflows/`、`adapters/`、`AI-START.md`、`README.md`
-   - **永不覆盖**：项目自己的 `ai-spec.yaml`、`business/business-rules.md`、AI 工具入口（`CLAUDE.md`、`AGENTS.md`、`.cursor/rules/`、`.github/copilot-instructions.md` 等）
-3. **只读业务扫描**（不改代码）：扫描代码、构建清单、Git 历史、现有文档，生成：
+   - **永不覆盖**：项目自己的 `ai-spec.yaml`、AI 工具入口（`CLAUDE.md`、`AGENTS.md`、`.cursor/rules/`、`.github/copilot-instructions.md` 等）。`business/business-rules.md` 由 AI 实时维护（见 §1.6），但其中标了 `[📌 用户确认]` 的条目永不覆盖。
+3. **只读业务扫描 + 实时建模**（不改代码）：扫描代码、构建清单、Git 历史、现有文档，**实时填充**：
    - `.ai-spec/business/project-map.md`：一句话定位 + 核心域 + 主要入口 + 外部集成 + 已知风险
-   - `.ai-spec/business/business-rules.discovered.md`：候选规则，每条带来源和可靠度
+   - `.ai-spec/business/business-rules.md`：按章节填充业务规则，每条带来源 / 可靠度 / 冲突标记（详见 §1.6）。新项目无代码可扫时，由用户口述 AI 起草。
 4. **规范瘦身**（只删 `.ai-spec/` 内的规范模板文件，**绝不触碰项目业务代码、配置、依赖、迁移、CI/CD**；基于扫描结果删除无关文件，宁可少不可乱）：
 
    **永不删**（核心，删了规范就废了）：
@@ -92,47 +92,59 @@
 - 规范文件：N 新增 / M 更新
 - 已瘦身：删除 K 个无关文件（如 mobile-general.md、cicd-standard.md）
 - 项目画像：[一句话定位]
-- 候选规则：X 条（已证实 Y / 待确认 Z）
+- 业务规则：X 条已建模（高 Y / 中 Z / 低 W），冲突 U 条待裁决
 - 下一步：检查改动 → 合并或继续在分支上工作
 ```
 
-接入完成后由用户决定：合并分支、调整候选规则，或直接在分支上继续开发。
+接入完成后由用户决定：合并分支、继续在分支上工作，或处理报告中标记的冲突项。
 
-## 1.6 项目逻辑的建立与维护
+## 1.6 项目逻辑的实时维护
 
-"项目逻辑"分散在四个文件，各有职责：
+"项目逻辑"是 AI 实时维护的**单一活动文档**，不需要用户手动填、不需要 promote / review 候选。新项目和老项目用同一套机制。
 
-| 文件 | 谁写 | 内容 | 状态 |
-|---|---|---|---|
-| `ai-spec.yaml` | 用户 | 项目名 / 技术栈 / 命令 / 阶段 | 用户权威 |
-| `business/project-map.md` | AI 生成 | 一句话定位 + 核心域 + 入口 + 集成 + 风险 | AI 自动维护 |
-| `business/business-rules.md` | 用户确认 | 业务定位 / 域 / 状态机 / KPI 口径 / 不变量 | 用户权威 |
-| `business/business-rules.discovered.md` | AI 生成 | 候选规则，每条带来源和可靠度 | AI 草稿区 |
+### 涉及文件
 
-### 老项目（existing / in-progress）
+| 文件 | 内容 | 维护方 |
+|---|---|---|
+| `ai-spec.yaml` | 项目名 / 技术栈 / 命令 / 阶段 | 用户首次填，AI 永不修改 |
+| `business/project-map.md` | 项目定位 / 核心域 / 入口 / 集成 / 风险 | AI 实时维护 |
+| `business/business-rules.md` | 业务定位 / 域 / 状态机 / KPI / 不变量 | AI 实时维护 |
 
-接入时 AI 扫描代码、commit、ADR、文档，生成 `business-rules.discovered.md` 候选清单。**AI 不会自动把候选写成正式规则**，流程是：
+### 规则标记（每条规则必须带，AI 自动加）
 
-1. AI 扫描 → 输出候选（每条带来源、可靠度、冲突标记）
-2. 用户 review → 把确认无误的条目手动 promote 到 `business-rules.md` 对应章节
-3. 后续每次代码修改涉及业务逻辑时，AI 在交付报告里标注"新增 / 变更 / 冲突的候选规则"，并追加到 `business-rules.discovered.md`
-4. 用户定期清理 discovered：已 promote 的标 `archived`，已否决的标 `rejected`
+- `[来源: 代码]` — 从代码 / 测试 / commit / 迁移文件推断
+- `[来源: 用户]` — 用户口述 / 文档 / PR 评论
+- `[来源: 推断]` — AI 综合推断，缺直接证据
+- `[可靠度: 高/中/低]` — 多源印证 / 单源 / 弱推断
+- `[📌 用户确认]` — 用户确认过的规则，**AI 永不覆盖**，只追加冲突标注
+- `[⚠️ 冲突 YYYY-MM-DD]` — 代码与规则不一致，AI 在交付报告中显式提醒用户裁决
 
-### 新项目（new）
+### 工作机制（新老项目通用）
 
-没有代码可扫，AI 不能"发现"业务规则，流程反过来：
+**接入时**：
+- 老项目：AI 扫描代码 / commit / 文档，按章节填入 `business-rules.md`，每条标 `[来源: 代码]` 和可靠度
+- 新项目：用户口述业务说明，AI 按章节起草，标 `[来源: 用户]` 或 `[来源: 推断]`
+- 两种情况 AI 都直接写入 `business-rules.md`，不需要用户先 review
 
-1. 用户口述或写一段业务说明给 AI
-2. AI 按 `business-rules.md` 章节结构起草（业务定位 / 域 / 状态机 / KPI / 不变量），未知项标"待用户确认"
-3. 用户确认后填入 `business-rules.md`
-4. **代码开始写之后**：AI 每次实现业务逻辑时，对照 `business-rules.md` 检查是否一致；不一致在交付报告里标"代码与业务规则冲突，请确认"，并写入 `business-rules.discovered.md`
+**日常维护**（每次实现 / 修改业务逻辑时）：
+1. 对照 `business-rules.md` 检查代码与规则是否一致
+2. **新规则**：追加到对应章节，标 `[来源: 代码]`
+3. **规则被代码印证**：可靠度升级（低→中→高），追加证据来源
+4. **代码与规则冲突**：**不改原规则、不改代码**，在规则下方加一行 `[⚠️ 冲突 YYYY-MM-DD] 代码说 X，规则说 Y`，并在交付报告"风险"栏显式列出
+5. `project-map.md` 同步更新
 
-### 共同规则
+### 用户参与点（只在必要时）
 
-- `business-rules.md` 是业务事实的唯一权威；**AI 永不擅自修改**
-- `business-rules.discovered.md` 是 AI 工作区，可追加、标注、归档
-- 用户可随时让 AI 重新扫描项目刷新 `discovered`
-- 代码与 `business-rules.md` 冲突时，AI 默认假设规则正确、代码可能有 bug，但在交付报告里显式标注让用户裁决
+- **平时零维护**：AI 实时更新，用户无需手动填或 promote
+- **冲突时裁决**：交付报告出现 `[⚠️ 冲突]` 时，用户决定改代码 / 改规则 / 显式标 `[📌 用户确认]`
+- **关键规则钉死**：用户可以对任何规则追加 `[📌 用户确认]` 标记，AI 此后永不修改该条，只追加冲突标注
+
+### 安全底线
+
+- AI 永不删除或覆盖 `[📌 用户确认]` 规则
+- AI 永不静默修改规则以"对齐"代码（不洗代码进规则）
+- AI 永不静默修改代码以"对齐"规则（不洗规则进代码）
+- 所有变更通过 git diff 可见，用户随时可回看
 
 ## 2. 项目阶段识别（Project Stage Detection）
 
