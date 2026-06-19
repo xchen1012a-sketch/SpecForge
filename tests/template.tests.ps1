@@ -118,7 +118,7 @@ Assert-True ($outputProtocol.Contains('L0')) 'output protocol missing level-base
 
 $multiProjectWorkflow = Read-ProjectFile 'workflows/multi-project-onboard.md'
 Assert-True ($multiProjectWorkflow.Contains('同项目多副本')) 'multi-project workflow missing duplicate-copy guard'
-Assert-True ($multiProjectWorkflow.Contains('ai-spec.yaml.draft')) 'multi-project workflow missing draft profile guidance'
+Assert-True ($multiProjectWorkflow.Contains('AI 首次接入直接生成')) 'multi-project workflow missing direct ai-spec generation guidance'
 Assert-True ($multiProjectWorkflow.Contains('templateVersion')) 'multi-project workflow missing template version consistency rule'
 Assert-True ($multiProjectWorkflow.Contains('install.ps1 -TargetRoot')) 'multi-project workflow missing sync command rule'
 Assert-True ($multiProjectWorkflow.Contains('禁止同步覆盖')) 'multi-project workflow missing no-automatic-sync-overwrite rule'
@@ -131,6 +131,9 @@ Assert-True ($specExample.Contains('context:')) 'ai-spec.example.yaml missing co
 Assert-True ($specExample.Contains('projectSize: auto')) 'ai-spec.example.yaml missing project size default'
 Assert-True ($specExample.Contains('projectSizeSignals:')) 'ai-spec.example.yaml missing project size signals'
 Assert-True ($specExample.Contains('quickRefStatus: TEMPLATE_PLACEHOLDER')) 'ai-spec.example.yaml missing quick-ref status default'
+
+Assert-True ($start.Contains('AI 首次接入必须') -and $start.Contains('ai-spec.yaml')) 'AI-START.md does not allow AI to generate ai-spec.yaml on onboarding'
+Assert-True ($start.Contains('后续修改需用户明确授权')) 'AI-START.md missing explicit authorization rule for later ai-spec edits'
 
 foreach ($routedFile in @(
     'core/delivery-standard.md',

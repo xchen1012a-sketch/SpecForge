@@ -68,7 +68,7 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 2. **同步规范文件到 `.ai-spec/`**：
    - 缺失文件直接复制
    - 已存在文件按内容差异覆盖规范正文：`core/`、`contracts/`、`stacks/`、`skills/`、`governance/`、`workflows/`、`adapters/`、`AI-START.md`、`README.md`
-   - **永不覆盖**：项目自己的 `ai-spec.yaml`、AI 工具入口（`CLAUDE.md`、`AGENTS.md`、`.cursor/rules/`、`.github/copilot-instructions.md` 等）。`business/business-rules.md` 由 AI 实时维护（见 §1.6），但其中标了 `[📌 用户确认]` 的条目永不覆盖。
+   - **Sync 永不覆盖**：模板同步场景不得覆盖项目自己的 `ai-spec.yaml`、AI 工具入口（`CLAUDE.md`、`AGENTS.md`、`.cursor/rules/`、`.github/copilot-instructions.md` 等）。首次接入必须由 AI 扫描代码、构建、依赖、文档后生成/更新 `ai-spec.yaml`；后续用户明确要求时 AI 可修改该文件并在交付中列出差异。
 3. **只读业务扫描 + 实时建模**（不改代码）：扫描代码、构建清单、Git 历史、现有文档，**实时填充**：
    - `.ai-spec/business/project-map.md`：一句话定位 + 核心域 + 主要入口 + 外部集成 + 已知风险
    - `.ai-spec/business/business-rules.md`：按章节填充业务规则，每条带来源 / 可靠度 / 冲突标记（详见 §1.6）。新项目无代码可扫时，由用户口述 AI 起草。
@@ -129,7 +129,7 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 
 | 文件 | 内容 | 维护方 |
 |---|---|---|
-| `ai-spec.yaml` | 项目名 / 技术栈 / 命令 / 阶段 | 用户首次填，AI 永不修改 |
+| `ai-spec.yaml` | 项目名 / 技术栈 / 命令 / 阶段 / 上下文策略 | AI 首次接入必须生成/更新；后续修改需用户明确授权并在交付中列 diff；`-Sync` 永不覆盖 |
 | `business/project-map.md` | 项目定位 / 核心域 / 入口 / 集成 / 风险 | AI 实时维护 |
 | `business/business-rules.md` | 业务定位 / 域 / 状态机 / KPI / 不变量 | AI 实时维护 |
 | `business/quick-ref.md` | 日常启动唯一入口 / 项目定位 / 核心域 / 动态上下文门禁 | AI 实时维护 |
@@ -373,7 +373,7 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 - 数据库 schema 变更（DDL、字段、索引）
 - 改动业务术语文案（按钮文案、错误提示、报告标题、邮件模板）
 
-先查项目自己的 `ai-spec.yaml`；不存在时参考 `ai-spec.example.yaml` 生成草案，但未经确认不得把推断写成业务事实。
+先查项目自己的 `ai-spec.yaml`；不存在时，首次接入必须根据代码、构建、依赖和文档直接生成正式画像。`type`、`stage`、`stack`、`commands`、`projectSize` 均由 AI 推断落盘；后续修改需用户明确授权。
 
 ## 7. 标准任务协议
 

@@ -15,6 +15,7 @@ try {
     New-Item -ItemType Directory -Force -Path $safeRoot | Out-Null
     $ownedClaude = Join-Path $safeRoot 'CLAUDE.md'
     [System.IO.File]::WriteAllText($ownedClaude, 'user-owned', [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText((Join-Path $safeRoot 'package.json'), '{"scripts":{"build":"vite build","test":"vitest run","lint":"biome check .","dev":"vite --host 0.0.0.0"},"dependencies":{"react":"latest","vite":"latest"}}', [System.Text.UTF8Encoding]::new($false))
 
     & $installer -TargetRoot $safeRoot -Mode existing -Tools 'claude-code,codex,cursor,github-copilot' -Apply *> $null
 
@@ -33,9 +34,16 @@ try {
 
     $profile = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $safeRoot '.ai-spec\ai-spec.yaml')
     Assert-Test ($profile.Contains('stage: existing')) 'Installer did not write the selected project stage'
+    Assert-Test ($profile.Contains('languages: [javascript]')) 'Installer did not infer JavaScript stack'
+    Assert-Test ($profile.Contains('frameworks: [react, vite]')) 'Installer did not infer frontend frameworks'
+    Assert-Test ($profile.Contains('packageManagers: [npm]')) 'Installer did not infer npm package manager'
+    Assert-Test ($profile.Contains('build: npm run build')) 'Installer did not infer build command'
+    Assert-Test ($profile.Contains('test: npm run test')) 'Installer did not infer test command'
+    Assert-Test ($profile.Contains('lint: npm run lint')) 'Installer did not infer lint command'
+    Assert-Test ($profile.Contains('run: npm run dev')) 'Installer did not infer run command'
 
     & $installer -TargetRoot $safeRoot -Mode existing -Tools 'generic' -Apply *> $null
-    Assert-Test (Test-Path -LiteralPath (Join-Path $safeRoot '.ai-spec\ai-spec.yaml.draft')) 'Installer did not create ai-spec.yaml.draft when profile already exists'
+    Assert-Test (-not (Test-Path -LiteralPath (Join-Path $safeRoot '.ai-spec\ai-spec.yaml.draft'))) 'Installer should not create ai-spec.yaml.draft by default'
 
     & (Join-Path $safeRoot '.ai-spec\tests\template.tests.ps1') *> $null
 
@@ -49,7 +57,7 @@ try {
     $backend = Join-Path $monoRoot 'backend'
     New-Item -ItemType Directory -Force -Path $frontend | Out-Null
     New-Item -ItemType Directory -Force -Path $backend | Out-Null
-    [System.IO.File]::WriteAllText((Join-Path $frontend 'package.json'), '{"dependencies":{"react":"latest","vite":"latest"}}', [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText((Join-Path $frontend 'package.json'), '{"scripts":{"build":"vite build","test":"vitest run","dev":"vite"},"dependencies":{"react":"latest","vite":"latest"}}', [System.Text.UTF8Encoding]::new($false))
     [System.IO.File]::WriteAllText((Join-Path $backend 'go.mod'), "module example.com/backend`n", [System.Text.UTF8Encoding]::new($false))
 
     & $installer -TargetRoot $monoRoot -Mode auto -Tools 'codex' -Onboard -Apply *> $null
@@ -72,6 +80,11 @@ try {
     $frontendProfile = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\ai-spec.yaml')
     Assert-Test ($frontendProfile.Contains('templateVersion: 2')) 'Frontend profile did not record templateVersion'
     Assert-Test ($frontendProfile.Contains('type: frontend')) 'Frontend profile did not record frontend type'
+    Assert-Test ($frontendProfile.Contains('languages: [javascript]')) 'Frontend profile did not infer language'
+    Assert-Test ($frontendProfile.Contains('frameworks: [react, vite]')) 'Frontend profile did not infer frameworks'
+    Assert-Test ($frontendProfile.Contains('build: npm run build')) 'Frontend profile did not infer build command'
+    Assert-Test ($frontendProfile.Contains('test: npm run test')) 'Frontend profile did not infer test command'
+    Assert-Test ($frontendProfile.Contains('run: npm run dev')) 'Frontend profile did not infer run command'
     Assert-Test ($frontendProfile.Contains("multiProjectId: $($index.multiProjectId)")) 'Frontend profile did not receive shared multiProjectId'
     Assert-Test ($frontendProfile.Contains('quickRefStatus: TEMPLATE_PLACEHOLDER')) 'Frontend profile missing quick-ref placeholder status'
     Assert-Test ($frontendProfile.Contains('projectSize: tiny')) 'Frontend profile did not record tiny project size'

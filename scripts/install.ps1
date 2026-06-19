@@ -273,12 +273,22 @@ function New-AiSpecProfileContent {
     $multiValue = if ($MultiProjectId) { $MultiProjectId } else { 'null' }
     $toolsValue = '[' + ($Tools -join ', ') + ']'
     $inventory = Get-ProjectInventory -ProjectRoot $ProjectRoot -IsMultiProject ([bool]$MultiProjectId)
+    $inference = Get-ProjectProfileInference -ProjectRoot $ProjectRoot
 
     $profile = $profile -replace '(?m)^  multiProjectId: null.*$', "  multiProjectId: $multiValue       # multi-project shared ID"
     $profile = $profile -replace '(?m)^  templateVersion:\s*\d+.*$', "  templateVersion: $templateVersion         # installed SpecForge template version"
     $profile = $profile -replace 'name: example-project', "name: $projectName"
     $profile = $profile -replace 'stage: new # new \| existing \| in-progress', "stage: $Stage # new | existing | in-progress"
     $profile = $profile -replace 'type: generic # backend \| frontend \| fullstack \| mobile \| library-sdk \| cli \| data-platform \| ai-llm \| generic', "type: $ProjectType # backend | frontend | fullstack | mobile | library-sdk | cli | data-platform | ai-llm | generic"
+    $profile = $profile -replace 'languages: \[\]', "languages: $($inference.languages)"
+    $profile = $profile -replace 'frameworks: \[\]', "frameworks: $($inference.frameworks)"
+    $profile = $profile -replace 'databases: \[\]', "databases: $($inference.databases)"
+    $profile = $profile -replace 'packageManagers: \[\]', "packageManagers: $($inference.packageManagers)"
+    $profile = $profile -replace 'build: null', "build: $($inference.commands.build)"
+    $profile = $profile -replace 'test: null', "test: $($inference.commands.test)"
+    $profile = $profile -replace 'lint: null', "lint: $($inference.commands.lint)"
+    $profile = $profile -replace 'typecheck: null', "typecheck: $($inference.commands.typecheck)"
+    $profile = $profile -replace 'run: null', "run: $($inference.commands.run)"
     $profile = $profile -replace 'tools: \[generic\]', "tools: $toolsValue"
     $profile = $profile -replace 'projectSize: auto # auto \| tiny \| small \| medium \| large \| enterprise', "projectSize: $($inventory.projectSize) # auto | tiny | small | medium | large | enterprise"
     $profile = $profile -replace 'fileCount: 0', "fileCount: $($inventory.fileCount)"
@@ -304,14 +314,6 @@ function Write-AiSpecProfile {
     $profileDestination = Join-Path $SpecRoot 'ai-spec.yaml'
     if (Test-Path -LiteralPath $profileDestination) {
         $script:conflicts.Add($profileDestination)
-        $draftDestination = Join-Path $SpecRoot 'ai-spec.yaml.draft'
-        if (-not (Test-Path -LiteralPath $draftDestination)) {
-            $script:actions.Add("CREATE $draftDestination (draft; existing ai-spec.yaml preserved)")
-            if ($Apply) {
-                $draft = New-AiSpecProfileContent -ProjectRoot $ProjectRoot -Stage $Stage -ProjectType $ProjectType -MultiProjectId $MultiProjectId
-                [System.IO.File]::WriteAllText($draftDestination, $draft, [System.Text.UTF8Encoding]::new($false))
-            }
-        }
         return
     }
 
@@ -468,6 +470,141 @@ function Get-ProjectInventory {
         hasCi = [bool]$hasCi
         multiProject = [bool]$IsMultiProject
         projectSize = $projectSize
+    }
+}
+
+function Format-YamlInlineArray {
+    param([string[]]$Items)
+
+    $clean = @($Items | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+    if ($clean.Count -eq 0) { return '[]' }
+    return '[' + ($clean -join ', ') + ']'
+}
+
+function Get-PackageJsonObject {
+    param([string]$ProjectRoot)
+
+    $packagePath = Join-Path $ProjectRoot 'package.json'
+    if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) { return $null }
+    try {
+        return (Get-Content -Raw -Encoding UTF8 -LiteralPath $packagePath | ConvertFrom-Json)
+    }
+    catch {
+        return $null
+    }
+}
+
+function Get-ProjectProfileInference {
+    param([string]$ProjectRoot)
+
+    $languages = [System.Collections.Generic.List[string]]::new()
+    $frameworks = [System.Collections.Generic.List[string]]::new()
+    $databases = [System.Collections.Generic.List[string]]::new()
+    $packageManagers = [System.Collections.Generic.List[string]]::new()
+    $commands = @{
+        build = 'null'
+        test = 'null'
+        lint = 'null'
+        typecheck = 'null'
+        run = 'null'
+    }
+
+    $package = Get-PackageJsonObject -ProjectRoot $ProjectRoot
+    if ($package) {
+        $packageManagers.Add('npm')
+        if (Test-Path -LiteralPath (Join-Path $ProjectRoot 'tsconfig.json')) { $languages.Add('typescript') }
+        else { $languages.Add('javascript') }
+
+        $dependencyText = (($package.dependencies | ConvertTo-Json -Depth 8 -Compress) + ' ' + ($package.devDependencies | ConvertTo-Json -Depth 8 -Compress)).ToLowerInvariant()
+        foreach ($pair in @(
+            @('react', 'react'),
+            @('vue', 'vue'),
+            @('next', 'nextjs'),
+            @('@umijs/max', 'umi'),
+            @('vite', 'vite'),
+            @('express', 'express'),
+            @('fastify', 'fastify'),
+            @('antd', 'antd'),
+            @('nestjs', 'nestjs')
+        )) {
+            if ($dependencyText.Contains($pair[0])) { $frameworks.Add($pair[1]) }
+        }
+        foreach ($pair in @(
+            @('mysql', 'mysql'),
+            @('pg', 'postgres'),
+            @('postgres', 'postgres'),
+            @('sqlite', 'sqlite'),
+            @('mongodb', 'mongodb'),
+            @('mongoose', 'mongodb'),
+            @('redis', 'redis'),
+            @('prisma', 'prisma')
+        )) {
+            if ($dependencyText.Contains($pair[0])) { $databases.Add($pair[1]) }
+        }
+
+        if ($package.scripts) {
+            if ($package.scripts.PSObject.Properties.Name -contains 'build') { $commands.build = 'npm run build' }
+            if ($package.scripts.PSObject.Properties.Name -contains 'test') { $commands.test = 'npm run test' }
+            if ($package.scripts.PSObject.Properties.Name -contains 'lint') { $commands.lint = 'npm run lint' }
+            if ($package.scripts.PSObject.Properties.Name -contains 'typecheck') { $commands.typecheck = 'npm run typecheck' }
+            elseif ($package.scripts.PSObject.Properties.Name -contains 'tsc') { $commands.typecheck = 'npm run tsc' }
+            if ($package.scripts.PSObject.Properties.Name -contains 'dev') { $commands.run = 'npm run dev' }
+            elseif ($package.scripts.PSObject.Properties.Name -contains 'start') { $commands.run = 'npm start' }
+        }
+    }
+
+    if (Test-Path -LiteralPath (Join-Path $ProjectRoot 'go.mod') -PathType Leaf) {
+        $languages.Add('go')
+        $packageManagers.Add('go')
+        $goMod = Read-FileIfExists -Path (Join-Path $ProjectRoot 'go.mod')
+        foreach ($pair in @(@('gin-gonic/gin', 'gin'), @('labstack/echo', 'echo'), @('gofiber/fiber', 'fiber'))) {
+            if ($goMod.Contains($pair[0])) { $frameworks.Add($pair[1]) }
+        }
+        if ($commands.build -eq 'null') { $commands.build = 'go build ./...' }
+        if ($commands.test -eq 'null') { $commands.test = 'go test ./...' }
+        if ($commands.run -eq 'null') { $commands.run = 'go run .' }
+    }
+
+    if ((Test-Path -LiteralPath (Join-Path $ProjectRoot 'pom.xml') -PathType Leaf) -or (Test-Path -LiteralPath (Join-Path $ProjectRoot '.project') -PathType Leaf)) {
+        $languages.Add('java')
+        if (Test-Path -LiteralPath (Join-Path $ProjectRoot 'pom.xml') -PathType Leaf) {
+            $packageManagers.Add('maven')
+            $pom = Read-FileIfExists -Path (Join-Path $ProjectRoot 'pom.xml')
+            if ($pom -match 'spring-boot|org\.springframework') { $frameworks.Add('spring') }
+            if ($pom -match 'mysql') { $databases.Add('mysql') }
+            if ($pom -match 'postgres') { $databases.Add('postgres') }
+            if ($commands.build -eq 'null') { $commands.build = 'mvn package' }
+            if ($commands.test -eq 'null') { $commands.test = 'mvn test' }
+        }
+    }
+
+    if ((Test-Path -LiteralPath (Join-Path $ProjectRoot 'build.gradle') -PathType Leaf) -or (Test-Path -LiteralPath (Join-Path $ProjectRoot 'build.gradle.kts') -PathType Leaf)) {
+        $languages.Add('java')
+        $packageManagers.Add('gradle')
+        if ($commands.build -eq 'null') { $commands.build = 'gradle build' }
+        if ($commands.test -eq 'null') { $commands.test = 'gradle test' }
+    }
+
+    if ((Test-Path -LiteralPath (Join-Path $ProjectRoot 'requirements.txt') -PathType Leaf) -or (Test-Path -LiteralPath (Join-Path $ProjectRoot 'pyproject.toml') -PathType Leaf)) {
+        $languages.Add('python')
+        $packageManagers.Add('pip')
+        $pythonText = (Read-FileIfExists -Path (Join-Path $ProjectRoot 'requirements.txt')) + "`n" + (Read-FileIfExists -Path (Join-Path $ProjectRoot 'pyproject.toml'))
+        foreach ($pair in @(@('django', 'django'), @('fastapi', 'fastapi'), @('flask', 'flask'), @('pandas', 'pandas'))) {
+            if ($pythonText -match $pair[0]) { $frameworks.Add($pair[1]) }
+        }
+        foreach ($pair in @(@('mysql', 'mysql'), @('psycopg|postgres', 'postgres'), @('sqlite', 'sqlite'), @('pymongo', 'mongodb'), @('redis', 'redis'))) {
+            if ($pythonText -match $pair[0]) { $databases.Add($pair[1]) }
+        }
+        if ($commands.test -eq 'null') { $commands.test = 'pytest' }
+        if ($commands.run -eq 'null') { $commands.run = 'python main.py' }
+    }
+
+    return @{
+        languages = Format-YamlInlineArray -Items @($languages)
+        frameworks = Format-YamlInlineArray -Items @($frameworks)
+        databases = Format-YamlInlineArray -Items @($databases)
+        packageManagers = Format-YamlInlineArray -Items @($packageManagers)
+        commands = $commands
     }
 }
 

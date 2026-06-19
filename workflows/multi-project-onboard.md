@@ -58,22 +58,22 @@
 每个项目独立维护，禁止同步覆盖：
 
 - `ai-spec.yaml`
-- `ai-spec.yaml.draft`
 - `business/`
 - `stacks/`
 - `adapters/`
 
-## 4. ai-spec.yaml.draft
+## 4. ai-spec.yaml
 
-如果正式 `ai-spec.yaml` 已存在或 AI 没有用户确认，不得覆盖正式文件。
+AI 首次接入直接生成每个子项目的正式 `ai-spec.yaml`，不用让用户从零填写。
 
-允许生成：
+必须从以下来源推断并落盘：
 
-```text
-.ai-spec/ai-spec.yaml.draft
-```
+- 代码目录和文件类型
+- 构建文件和依赖
+- 包结构、入口文件、配置文件
+- README / docs 中的项目说明
 
-draft 只表达 AI 推断的项目画像。用户确认后再手动改名或合并到正式 `ai-spec.yaml`。
+`type`、`stage`、`stack`、`commands`、`projectSize` 都应直接写入正式文件。后续用户明确要求时，AI 可以继续修改 `ai-spec.yaml`，但交付时必须列出 diff。模板 `-Sync` 仍然禁止同步覆盖 `ai-spec.yaml`。
 
 ## 5. 项目类型判定
 
@@ -96,4 +96,3 @@ L4 接入允许检查深度 ≤ 2 的候选目录，但必须排除 `node_module
 - 子项目目录启动：按普通启动协议执行，使用 `multiProjectId` 识别兄弟项目。
 - 父目录启动：读取 `.specforge.json` 后询问本次处理哪个子项目或全部。
 - 版本不一致：提示执行 `scripts/install.ps1 -TargetRoot <父目录或项目目录> -Sync`；实际覆盖必须由用户确认并追加 `-Apply`。
-
