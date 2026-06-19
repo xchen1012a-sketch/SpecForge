@@ -4,5 +4,4 @@ Before any task, read `{{AI_SPEC_PATH}}/AI-START.md` and follow its startup prot
 
 Use `{{AI_SPEC_PATH}}/ai-spec.yaml` as the project profile when present. Do not convert inferred information into project facts without confirmation.
 
-This file exists only for Codex instruction discovery. The specification source of truth remains under `{{AI_SPEC_PATH}}/`. Use the shared `product-architect` and `dev-implementation` skills when applicable.
-
+This file exists only for Codex instruction discovery. The specification source of truth remains under `{{AI_SPEC_PATH}}/`. Use the shared skills when applicable: `product-architect`, `dev-implementation`, `code-reviewer`, `debugger`, `spec-evaluator`.

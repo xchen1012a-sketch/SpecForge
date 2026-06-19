@@ -49,6 +49,9 @@ $requiredFiles = @(
     'governance/ownership-template.md',
     'skills/product-architect/SKILL.md',
     'skills/dev-implementation/SKILL.md',
+    'skills/code-reviewer/SKILL.md',
+    'skills/debugger/SKILL.md',
+    'skills/spec-evaluator/SKILL.md',
     'scripts/install.sh',
     'scripts/install.ps1',
     'scripts/validate.ps1'
@@ -93,6 +96,9 @@ Assert-True ($start.Contains('目标驱动验证')) 'AI-START.md missing goal-dr
 Assert-True ($start.Contains('workflows/multi-project-onboard.md')) 'AI-START.md missing lazy multi-project workflow route'
 Assert-True ($start.Contains('workflows/output-protocol.md')) 'AI-START.md missing output protocol route'
 Assert-True ($start.Contains('workflows/session-coordination.md')) 'AI-START.md missing session coordination workflow route'
+foreach ($skillName in @('product-architect', 'dev-implementation', 'code-reviewer', 'debugger', 'spec-evaluator')) {
+    Assert-True ($start.Contains("skills/$skillName/SKILL.md")) "AI-START.md missing skill route: $skillName"
+}
 foreach ($mode in @('L0 快速恢复', 'L1 机械改动', 'L2 标准改动', 'L3 高风险改动', 'L4 接入/审计')) {
     Assert-True ($start.Contains($mode)) "AI-START.md missing context budget mode: $mode"
 }
@@ -147,6 +153,7 @@ Assert-True ($specExample.Contains('quickRefStatus: TEMPLATE_PLACEHOLDER')) 'ai-
 $readme = Read-ProjectFile 'README.md'
 Assert-True ($readme.Contains('Windsurf/Cline/Aider/Gemini 通过 adapters/generic')) 'README missing generic adapter clarification'
 Assert-True ($readme.Contains('before/after')) 'README missing before/after example'
+Assert-True ($readme.Contains('五个核心 Skill')) 'README missing five core skills note'
 
 $installSh = Read-ProjectFile 'scripts/install.sh'
 Assert-True ($installSh.Contains('--onboard')) 'install.sh missing onboard option'
@@ -185,7 +192,7 @@ Assert-True ($securityStandard.Contains('.env')) 'security standard missing env-
 Assert-True ($securityStandard.Contains('IDE 配置')) 'security standard missing IDE config filter'
 Assert-True ($securityStandard.Contains('构建产物')) 'security standard missing build artifact filter'
 
-foreach ($skill in @('product-architect', 'dev-implementation')) {
+foreach ($skill in @('product-architect', 'dev-implementation', 'code-reviewer', 'debugger', 'spec-evaluator')) {
     $relativePath = "skills/$skill/SKILL.md"
     $content = Read-ProjectFile $relativePath
     Assert-True ($content -match "(?ms)^---\s*\nname:\s*$skill\s*\ndescription:") "$relativePath has invalid frontmatter"

@@ -306,7 +306,10 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 | 构建或运行故障 | `core/gotchas.md` |
 | 前端/后端/移动/AI/CLI/数据 | `stacks/` 中对应文件 |
 | 产品方案 | `skills/product-architect/SKILL.md` |
-| 开发实施/修 Bug | `skills/dev-implementation/SKILL.md` |
+| 开发实施 | `skills/dev-implementation/SKILL.md` |
+| 代码审查 / PR 审查 / 提交前复核 | `skills/code-reviewer/SKILL.md` |
+| 复杂 Bug / 测试失败 / 线上问题诊断 | `skills/debugger/SKILL.md` |
+| AI 输出质量 / 规范执行效果评估 | `skills/spec-evaluator/SKILL.md` |
 | 多 AI 协作/任务交接 | `core/ai-workflow.md` |
 
 **业务逻辑改动的触发条件**（任一满足即按"业务逻辑改动"行加载，不确定时默认触发）：

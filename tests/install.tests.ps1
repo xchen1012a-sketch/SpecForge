@@ -27,6 +27,12 @@ try {
     Assert-Test (Test-Path -LiteralPath (Join-Path $safeRoot '.claude\settings.json')) 'Installer did not create Claude settings'
     Assert-Test (Test-Path -LiteralPath (Join-Path $safeRoot '.agents\skills\product-architect\SKILL.md')) 'Installer did not create Codex skill'
     Assert-Test (Test-Path -LiteralPath (Join-Path $safeRoot '.claude\skills\dev-implementation\SKILL.md')) 'Installer did not create Claude skill'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $safeRoot '.agents\skills\code-reviewer\SKILL.md')) 'Installer did not create Codex code-reviewer skill'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $safeRoot '.agents\skills\debugger\SKILL.md')) 'Installer did not create Codex debugger skill'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $safeRoot '.agents\skills\spec-evaluator\SKILL.md')) 'Installer did not create Codex spec-evaluator skill'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $safeRoot '.claude\skills\code-reviewer\SKILL.md')) 'Installer did not create Claude code-reviewer skill'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $safeRoot '.claude\skills\debugger\SKILL.md')) 'Installer did not create Claude debugger skill'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $safeRoot '.claude\skills\spec-evaluator\SKILL.md')) 'Installer did not create Claude spec-evaluator skill'
     Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $ownedClaude) -eq 'user-owned') 'Installer overwrote an existing CLAUDE.md'
 
     $agents = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $safeRoot 'AGENTS.md')

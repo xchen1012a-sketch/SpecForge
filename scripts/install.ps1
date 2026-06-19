@@ -40,6 +40,7 @@ if ($targetFullPath -eq [System.IO.Path]::GetFullPath($sourceRoot)) {
 $actions = [System.Collections.Generic.List[string]]::new()
 $conflicts = [System.Collections.Generic.List[string]]::new()
 $installReports = [System.Collections.Generic.List[hashtable]]::new()
+$coreSkills = @('product-architect', 'dev-implementation', 'code-reviewer', 'debugger', 'spec-evaluator')
 
 function Get-TemplateVersion {
     $examplePath = Join-Path $sourceRoot 'ai-spec.example.yaml'
@@ -337,7 +338,7 @@ function Add-AdapterEntrypoints {
             'claude-code' {
                 Add-RenderedFile -Source (Join-Path $sourceRoot 'adapters\claude-code\CLAUDE.md.template') -Destination (Join-Path $ProjectRoot 'CLAUDE.md') -Variables $variables
                 Add-FileFromSource -Source (Join-Path $sourceRoot 'adapters\claude-code\settings.json.template') -Destination (Join-Path $ProjectRoot '.claude\settings.json')
-                foreach ($skill in @('product-architect', 'dev-implementation')) {
+                foreach ($skill in $coreSkills) {
                     $sourceSkill = Join-Path $sourceRoot "skills\$skill"
                     Get-ChildItem -LiteralPath $sourceSkill -Recurse -File | ForEach-Object {
                         $skillRelative = $_.FullName.Substring($sourceSkill.Length + 1)
@@ -347,7 +348,7 @@ function Add-AdapterEntrypoints {
             }
             'codex' {
                 Add-RenderedFile -Source (Join-Path $sourceRoot 'adapters\codex\AGENTS.md.template') -Destination (Join-Path $ProjectRoot 'AGENTS.md') -Variables $variables
-                foreach ($skill in @('product-architect', 'dev-implementation')) {
+                foreach ($skill in $coreSkills) {
                     $sourceSkill = Join-Path $sourceRoot "skills\$skill"
                     Get-ChildItem -LiteralPath $sourceSkill -Recurse -File | ForEach-Object {
                         $skillRelative = $_.FullName.Substring($sourceSkill.Length + 1)
