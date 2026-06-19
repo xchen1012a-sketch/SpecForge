@@ -13,7 +13,7 @@
 - **原因**：`package-lock.json` / `pnpm-lock.yaml` / `Cargo.lock` / `go.sum` 与代码不同步
 - **解决**：每次改依赖立即 commit 锁文件；CI 校验锁文件一致性
 
-### 1.3 多版本依赖冲突
+### 1.2 多版本依赖冲突
 - **现象**：`ClassNotFoundException` / `MethodNotFoundError` / 运行时报版本不兼容
 - **原因**：传递依赖引入了多个版本
 - **解决**：用 dependency tree 排查（`mvn dependency:tree` / `npm ls`），显式锁定版本

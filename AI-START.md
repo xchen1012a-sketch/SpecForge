@@ -83,15 +83,8 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
    - `scripts/validate.ps1`
 
    **按项目类型删**：
-   - 纯后端 → 删 `stacks/frontend-general.md`、`stacks/mobile-general.md`、`stacks/ai-llm-app.md`
-   - 纯前端 → 删 `stacks/backend-general.md`、`stacks/mobile-general.md`、`stacks/ai-llm-app.md`、`core/data-migration-standard.md`、`core/permission-standard.md`
-   - 移动端 → 删不相关的其它 stacks
-   - 无数据库 → 删 `core/data-migration-standard.md`
-   - 无 CI → 删 `core/cicd-standard.md`
-   - 无认证/权限 → 删 `core/permission-standard.md`
-   - 非生产/无可观测需求 → 删 `core/observability.md`
-   - 无已知陷阱 → 删 `core/gotchas.md`
-
+   - **stacks/ 动态规则**：保留匹配当前项目类型的 `stacks/` 文件，删除其余所有。完整映射见 §1.5.1 类型表
+   - **core/ 条件删除**：无数据库 → 删 `core/data-migration-standard.md`；无 CI → 删 `core/cicd-standard.md`；无认证/权限 → 删 `core/permission-standard.md`；非生产/无可观测需求 → 删 `core/observability.md`；无已知陷阱 → 删 `core/gotchas.md`
    **按团队规模删**（个人或 ≤ 3 人小团队）：
    - 删 `governance/rfc-template.md`、`governance/risk-register-template.md`、`governance/ownership-template.md`
    - 保留 `governance/policy-levels.md`、`governance/exception-template.md`、`governance/handoff-template.md`、`governance/adr-template.md`
@@ -176,6 +169,8 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 | `pubspec.yaml` / 含 `android/` 或 `ios/` 目录 | `mobile` |
 | `Cargo.toml` / `go.mod` 且无 Web 服务框架 | `library-sdk` |
 | `pyproject.toml` 且含 AI/LLM 框架依赖 | `ai-llm` |
+| 含 `main.go` / `main.rs` / `__main__.py` / `bin/` 目录，且无 Web 框架依赖 | `cli` |
+| 含 `dbt_project.yml` / `airflow.cfg` / `dagster` / 大量 SQL 文件，且无 Web 入口 | `data-platform` |
 | 无法判定 | `generic` |
 
 #### 瘦身
@@ -398,9 +393,10 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 | 构建、运行、测试命令 | `core/command-standard.md` |
 | 日志/监控/告警 | `core/observability.md` |
 | 构建或运行故障 | `core/gotchas.md` |
-| 前端/后端/移动/AI | `stacks/` 中对应文件 |
+| 前端/后端/移动/AI/CLI/数据 | `stacks/` 中对应文件 |
 | 产品方案 | `skills/product-architect/SKILL.md` |
 | 开发实施/修 Bug | `skills/dev-implementation/SKILL.md` |
+| 多 AI 协作/任务交接 | `core/ai-workflow.md` |
 
 **业务逻辑改动的触发条件**（任一满足即按"业务逻辑改动"行加载，不确定时默认触发）：
 

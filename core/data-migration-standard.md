@@ -40,11 +40,11 @@
 -- 关联：TICKET-1234
 -- 作者：alice  日期：2026-06-19
 
--- PostgreSQL 示例（其它数据库不得直接照抄）
+-- 示例（数据库方言不同，具体语法按项目实际）
 CREATE INDEX CONCURRENTLY idx_orders_user_id ON orders(user_id);
 
 -- 回滚（单独执行）
--- DROP INDEX CONCURRENTLY idx_orders_user_id;
+DROP INDEX CONCURRENTLY idx_orders_user_id;
 ```
 
 ---
@@ -81,10 +81,10 @@ Step 4（v4）：清理旧字段（DDL 删除）
 - 记录进度到 `migration_progress` 表（断点续跑）
 
 ```sql
--- 反例：一次性更新百万行
+-- 反例：一次性更新百万行（会对大表加锁，阻塞生产）
 UPDATE orders SET status = 'archived' WHERE created_at < '2025-01-01';
 
--- MySQL 风格示意；PostgreSQL/SQL Server/Oracle 需改用各自支持的批处理方式
+-- 正例：分批更新（具体语法按数据库方言实现）
 UPDATE orders SET status = 'archived'
 WHERE id IN (
   SELECT id FROM (
