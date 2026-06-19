@@ -1,5 +1,9 @@
 specVersion: 2
 
+spec:
+  multiProjectId: null       # 多项目共享 ID（UUID v4；单项目为 null）
+  templateVersion: 2         # 生成此实例的模板版本
+
 project:
   name: example-project
   description: Replace with the real project description

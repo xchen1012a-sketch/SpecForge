@@ -41,7 +41,28 @@
 
 用户说"接入规范"、"启动 SpecForge"、"初始化 .ai-spec"时默认进入此模式，无需逐步询问。已授权动作：
 
-1. **创建接入分支**：从当前 HEAD 创建 `chore/specforge-onboard`（或用户指定名），所有接入改动落在此分支；主分支保持干净，回退只需 `git checkout 主分支` 或删除分支。
+### 项目结构检测（在任何步骤前执行）
+
+AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多项目：
+
+**检测规则**：对每个直接子目录（排除 `.git/`、`node_modules/`、`vendor/` 及隐藏目录）：
+- 若包含构建文件（`package.json`、`pom.xml`、`go.mod`、`Cargo.toml`、`requirements.txt`、`pyproject.toml`、`Makefile`、`build.gradle`、`build.gradle.kts`、`composer.json`、`mix.exs`、`CMakeLists.txt`、`BUILD`、`WORKSPACE`）或源码目录（`src/`、`app/`、`lib/`），判定为**项目目录**。
+- 目录名称（如 `docs`、`data`、`sql`、`assets`）不构成排除理由 — 只要包含构建文件或源码目录，即为项目目录。
+
+**路由结果**：
+
+| 检测到的项目目录数 | 模式 | 安装目标 |
+|---|---|---|
+| 0 个 | 单项目 | `PROJECT_ROOT`（当前目录，行为不变） |
+| 1 个 | 单项目 | 该子目录（`PROJECT_ROOT` 重指向它） |
+| 2+ 个 | **多项目** | 每个子项目目录各安装一份 `.ai-spec/`（详见 §1.5.1） |
+
+**迁移纠正**：若 `PROJECT_ROOT` 已存在 `.ai-spec/` 但检测到 1+ 个子项目目录，说明之前误装在父目录。删除父目录的 `.ai-spec/`，按上述路由重新安装到正确的子项目目录，并在完成报告中注明"已从父目录迁移至 N 个子项目"。
+
+1. **创建接入分支**：
+   - **无 Git 仓库**：先执行 `git init && git add -A && git commit -m "chore: initial commit"`，然后从初始提交创建 `chore/specforge-onboard`。
+   - **有 Git 仓库**：直接从当前 HEAD 创建 `chore/specforge-onboard`（或用户指定名）。
+   所有接入改动落在此分支；主分支保持干净，回退只需 `git checkout 主分支` 或删除分支。
 2. **同步规范文件到 `.ai-spec/`**：
    - 缺失文件直接复制
    - 已存在文件按内容差异覆盖规范正文：`core/`、`contracts/`、`stacks/`、`skills/`、`governance/`、`workflows/`、`adapters/`、`AI-START.md`、`README.md`
@@ -49,6 +70,7 @@
 3. **只读业务扫描 + 实时建模**（不改代码）：扫描代码、构建清单、Git 历史、现有文档，**实时填充**：
    - `.ai-spec/business/project-map.md`：一句话定位 + 核心域 + 主要入口 + 外部集成 + 已知风险
    - `.ai-spec/business/business-rules.md`：按章节填充业务规则，每条带来源 / 可靠度 / 冲突标记（详见 §1.6）。新项目无代码可扫时，由用户口述 AI 起草。
+   - `.ai-spec/business/quick-ref.md`：从已填充的 `business-rules.md` 浓缩生成（约 30 行），只保留核心域、关键状态机、关键不变量和 KPI 摘要，作为 AI 会话启动时的基础上下文。
 4. **规范瘦身**（只删 `.ai-spec/` 内的规范模板文件，**绝不触碰项目业务代码、配置、依赖、迁移、CI/CD**；基于扫描结果删除无关文件，宁可少不可乱）：
 
    **永不删**（核心，删了规范就废了）：
@@ -98,6 +120,88 @@
 
 接入完成后由用户决定：合并分支、继续在分支上工作，或处理报告中标记的冲突项。
 
+### 1.5.1 多项目接入模式
+
+当 `PROJECT_ROOT` 下检测到 2+ 个项目目录时，进入此模式。
+
+#### 安装规则
+
+1. **每项目一份 `.ai-spec/`**：为每个子项目目录各安装一份完整的 `.ai-spec/`。
+2. **共享身份标识**：所有实例使用同一个 `multiProjectId`（UUID v4，安装时生成），写入每个实例的 `ai-spec.yaml` 中 `spec.multiProjectId`。
+3. **父目录索引**：在父目录创建 `.specforge.json`（不是 `.ai-spec/` 目录，仅为轻量索引）：
+
+```json
+{
+  "multiProjectId": "<uuid>",
+  "projects": [
+    {
+      "path": "frontend",
+      "type": "frontend",
+      "buildFiles": ["package.json"],
+      "installedAt": "<ISO timestamp>"
+    },
+    {
+      "path": "backend",
+      "type": "backend",
+      "buildFiles": ["pom.xml"],
+      "installedAt": "<ISO timestamp>"
+    }
+  ]
+}
+```
+
+4. **核心文件一致性**：以下文件在所有实例中**内容完全一致**（从同一模板版本复制）：
+   - `AI-START.md`、`README.md`
+   - `core/` 全部
+   - `governance/` 全部
+   - `skills/` 全部
+   - `workflows/` 全部
+   - `contracts/` 全部
+   - `scripts/validate.ps1`
+5. **差异化文件**（按项目类型独立维护）：
+   - `ai-spec.yaml`（各自的技术栈和命令）
+   - `business/business-rules.md`、`business/project-map.md`、`business/quick-ref.md`
+   - `stacks/`（按项目类型瘦身，前端删后端栈，后端删前端栈）
+   - `adapters/`（各项目可能使用不同 AI 工具）
+
+#### 项目类型判定
+
+对每个子项目目录，按优先级判定类型：
+
+| 信号 | 类型 |
+|------|------|
+| `package.json` 且依赖含 React / Vue / Next.js 等前端框架 | `frontend` |
+| `pom.xml` / `go.mod` / `requirements.txt` 且无前端框架依赖 | `backend` |
+| `package.json` 且同时含前端框架和后端框架依赖 | `fullstack` |
+| `pubspec.yaml` / 含 `android/` 或 `ios/` 目录 | `mobile` |
+| `Cargo.toml` / `go.mod` 且无 Web 服务框架 | `library-sdk` |
+| `pyproject.toml` 且含 AI/LLM 框架依赖 | `ai-llm` |
+| 无法判定 | `generic` |
+
+#### 瘦身
+
+每个实例的 `.ai-spec/` 按项目类型独立执行规范瘦身（规则同 §1.5 步骤 4），确保前端项目不保留后端栈，后端项目不保留前端栈。
+
+#### 完成报告（多项目扩展）
+
+在 §1.5 步骤 6 的完成报告基础上追加：
+
+```markdown
+## 多项目接入
+| 子项目 | 类型 | 瘦身 | 状态 |
+|---|---|---|---|
+| frontend | frontend | 删除 backend-general.md, mobile-general.md, ... | 新增 |
+| backend | backend | 删除 frontend-general.md, mobile-general.md, ... | 新增 |
+- 共享 ID：<uuid>
+- 父目录 .ai-spec/：已迁移 / 无需迁移
+```
+
+#### 后续会话行为
+
+- **子项目目录启动**：正常启动协议，`ai-spec.yaml` 中的 `multiProjectId` 标识多项目身份。
+- **父目录启动**：检测到 `.specforge.json` 存在，询问用户本次涉及哪个子项目（或"全部"）。
+- **跨项目协调**：API 契约变更时，主动检查兄弟项目的 `contracts/`。
+
 ## 1.6 项目逻辑的实时维护
 
 "项目逻辑"是 AI 实时维护的**单一活动文档**，不需要用户手动填、不需要 promote / review 候选。新项目和老项目用同一套机制。
@@ -109,6 +213,7 @@
 | `ai-spec.yaml` | 项目名 / 技术栈 / 命令 / 阶段 | 用户首次填，AI 永不修改 |
 | `business/project-map.md` | 项目定位 / 核心域 / 入口 / 集成 / 风险 | AI 实时维护 |
 | `business/business-rules.md` | 业务定位 / 域 / 状态机 / KPI / 不变量 | AI 实时维护 |
+| `business/quick-ref.md` | 核心域 / 状态机 / 不变量 / KPI 摘要（≤30 行） | AI 实时维护 |
 
 ### 规则标记（每条规则必须带，AI 自动加）
 
@@ -183,6 +288,18 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 以下规则属于 `MUST`，默认不能通过普通项目配置关闭：
 
 - 不读取、输出、提交或传播真实密钥、Token、私钥和生产凭证。
+- 检测到凭证或疑似凭证时，输出以下结构化报告（**不输出凭证内容本身**）：
+
+  ```
+  ## 凭证检测报告
+  | 文件路径 | 凭证类型 | 建议操作 | 风险等级 |
+  |---|---|---|---|
+  | path/to/config.yaml | Token | 迁移到环境变量，提供 config.example 模板 | 高 |
+  ```
+
+  凭证类型：`password` / `Token` / `key` / `私钥` / `证书`。
+  建议操作：添加至 `.gitignore`、生成 `config.example` 占位模板、迁移至环境变量、密钥轮换。
+  风险等级：`高`（已提交至 Git 或硬编码在源码） / `中`（存在于本地未跟踪文件但可被工具读取） / `低`（已正确排除但提醒复查）。
 - 不覆盖用户未提交改动，不使用破坏性 Git 或文件命令清理现场。
 - 不操作生产环境、生产数据库、真实付费资源或真实用户通信，除非用户明确授权并确认影响范围。
 - 不绕过认证、授权、数据隔离和审计逻辑以换取“先跑通”。
@@ -213,7 +330,7 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 
 | 任务 | 必读 |
 |---|---|
-| 任意代码修改（基础） | `core/delivery-standard.md`、`core/security-standard.md`、`core/architecture.md` |
+| 任意代码修改（基础） | `core/delivery-standard.md`、`core/security-standard.md`、`core/architecture.md`、`business/quick-ref.md`（约 30 行，自动生成） |
 | 纯视觉/样式修复（仅当同时满足：只改 CSS 色值/间距/字号/圆角/图标/纯文案 typo；不动 JSX/HTML 结构、不动交互逻辑、不动按钮或业务术语文案、不动权限可见性） | 仅 `core/delivery-standard.md` |
 | 业务逻辑改动（触发条件见下） | 基础 + `business/business-rules.md`、`business/project-map.md` |
 | API/事件/跨端 | `contracts/api-contract-standard.md`、`contracts/integration-standard.md` |

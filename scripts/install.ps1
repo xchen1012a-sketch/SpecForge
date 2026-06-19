@@ -55,6 +55,49 @@ function Detect-Mode {
     return 'new'
 }
 
+function Detect-SubProjects {
+    param([string]$RootDir)
+
+    $buildFiles = @(
+        'package.json', 'pom.xml', 'go.mod', 'Cargo.toml',
+        'requirements.txt', 'pyproject.toml', 'Makefile',
+        'build.gradle', 'build.gradle.kts', 'composer.json',
+        'mix.exs', 'CMakeLists.txt', 'BUILD', 'WORKSPACE'
+    )
+    $sourceDirs = @('src', 'app', 'lib')
+
+    $projects = [System.Collections.Generic.List[hashtable]]::new()
+    $children = Get-ChildItem -LiteralPath $RootDir -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notmatch '^\.' -and $_.Name -notin @('node_modules', 'vendor') }
+
+    foreach ($child in $children) {
+        $isProject = $false
+        $foundBuildFiles = [System.Collections.Generic.List[string]]::new()
+
+        foreach ($bf in $buildFiles) {
+            if (Test-Path -LiteralPath (Join-Path $child.FullName $bf)) {
+                $isProject = $true
+                $null = $foundBuildFiles.Add($bf)
+            }
+        }
+        foreach ($sd in $sourceDirs) {
+            if (Test-Path -LiteralPath (Join-Path $child.FullName $sd) -PathType Container) {
+                $isProject = $true
+            }
+        }
+
+        if ($isProject) {
+            $projects.Add(@{
+                path = $child.FullName
+                name = $child.Name
+                buildFiles = $foundBuildFiles -join ', '
+            })
+        }
+    }
+
+    return $projects
+}
+
 if ($Mode -eq 'auto') {
     $Mode = Detect-Mode -ProjectRoot $targetFullPath
 }
