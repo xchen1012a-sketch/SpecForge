@@ -47,6 +47,10 @@ try {
     Assert-Test ($profile.Contains('test: npm run test')) 'Installer did not infer test command'
     Assert-Test ($profile.Contains('lint: npm run lint')) 'Installer did not infer lint command'
     Assert-Test ($profile.Contains('run: npm run dev')) 'Installer did not infer run command'
+    Assert-Test ($profile.Contains('skillPolicy:')) 'Installer did not write default skill policy'
+    Assert-Test ($profile.Contains('mode: project-first')) 'Installer did not write project-first skill mode'
+    Assert-Test ($profile.Contains('allowLocalSkills: true')) 'Installer did not allow local skills as explicit policy'
+    Assert-Test ($profile.Contains('reportSkillSource: true')) 'Installer did not require skill source reporting'
 
     & $installer -TargetRoot $safeRoot -Mode existing -Tools 'generic' -Apply *> $null
     Assert-Test (-not (Test-Path -LiteralPath (Join-Path $safeRoot '.ai-spec\ai-spec.yaml.draft'))) 'Installer should not create ai-spec.yaml.draft by default'
@@ -97,6 +101,8 @@ try {
     Assert-Test ($frontendProfile.Contains('fileCount: 1')) 'Frontend profile did not record project file count'
     Assert-Test ($frontendProfile.Contains('hasApi: false')) 'Frontend profile did not record API signal'
     Assert-Test ($frontendProfile.Contains('hasAuth: false')) 'Frontend profile did not record auth signal'
+    Assert-Test ($frontendProfile.Contains('skillPolicy:')) 'Frontend profile missing default skill policy'
+    Assert-Test ($frontendProfile.Contains('mode: project-first')) 'Frontend profile missing project-first skill mode'
     $frontendQuickRef = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\business\quick-ref.md')
     Assert-Test ($frontendQuickRef.Contains('TEMPLATE_PLACEHOLDER')) 'Installed quick-ref missing placeholder status'
     Assert-Test ($frontendQuickRef.Contains('dailyEntry: true')) 'Installed quick-ref is not the daily startup entry'
@@ -130,6 +136,20 @@ try {
     Assert-Test (-not (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\adapters\cursor'))) 'Onboard mode kept unused adapter'
     & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null
 
+    $frontendProfilePath = Join-Path $frontend '.ai-spec\ai-spec.yaml'
+    $profileWithSkillPolicy = Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendProfilePath
+    $profileWithoutSkillPolicy = $profileWithSkillPolicy -replace '(?ms)\r?\n  skillPolicy:\r?\n    mode:.*?\r?\n    allowLocalSkills:.*?\r?\n    reportSkillSource:.*?$', ''
+    [System.IO.File]::WriteAllText($frontendProfilePath, $profileWithoutSkillPolicy, [System.Text.UTF8Encoding]::new($false))
+    $missingSkillPolicyFailed = $false
+    try {
+        & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null
+    }
+    catch {
+        $missingSkillPolicyFailed = $true
+    }
+    Assert-Test $missingSkillPolicyFailed 'Installed validate.ps1 did not fail when ai.skillPolicy was missing'
+    [System.IO.File]::WriteAllText($frontendProfilePath, $profileWithSkillPolicy, [System.Text.UTF8Encoding]::new($false))
+
     Add-Content -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\business\business-rules.md') -Value '[⚠️ 冲突 2026-06-19] code says A, rule says B'
     $conflictValidation = & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') 6>&1
     $conflictValidationText = [string]::Join("`n", @($conflictValidation))
@@ -138,7 +158,6 @@ try {
 
     $frontendStart = Join-Path $frontend '.ai-spec\AI-START.md'
     $frontendRulesPath = Join-Path $frontend '.ai-spec\business\business-rules.md'
-    $frontendProfilePath = Join-Path $frontend '.ai-spec\ai-spec.yaml'
     [System.IO.File]::WriteAllText($frontendStart, 'old-start', [System.Text.UTF8Encoding]::new($false))
     [System.IO.File]::WriteAllText($frontendRulesPath, 'project-owned-business-rules', [System.Text.UTF8Encoding]::new($false))
     $profileBeforeSync = Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendProfilePath

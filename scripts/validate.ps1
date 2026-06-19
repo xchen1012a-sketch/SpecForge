@@ -32,6 +32,18 @@ else {
             throw "Missing installed spec file: $requiredPath"
         }
     }
+
+    $aiSpecPath = Join-Path $root 'ai-spec.yaml'
+    $aiSpecContent = Get-Content -Raw -Encoding UTF8 -LiteralPath $aiSpecPath
+    if (-not ($aiSpecContent -match '(?m)^  skillPolicy:\s*$')) {
+        throw 'Missing ai.skillPolicy in ai-spec.yaml. Installed specs must persist skillPolicy.mode so AI tools do not silently bypass project skills.'
+    }
+    if (-not ($aiSpecContent -match '(?m)^    mode:\s*(project-first|local-first|hybrid)\b')) {
+        throw 'Invalid or missing ai.skillPolicy.mode in ai-spec.yaml. Expected project-first, local-first, or hybrid.'
+    }
+    if (-not ($aiSpecContent -match '(?m)^    reportSkillSource:\s*true\b')) {
+        throw 'Missing ai.skillPolicy.reportSkillSource: true in ai-spec.yaml. AI tools must report whether project/local skills were used.'
+    }
     Write-Host 'Installed spec structure validation passed.' -ForegroundColor Green
 }
 
