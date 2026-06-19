@@ -16,6 +16,7 @@ SpecForge 是一套 AI 项目协作规范模板，核心目标是：**让 AI 按
 - **多项目版本同步**：父目录 `.specforge.json` 和子项目 `ai-spec.yaml` 记录 `templateVersion`，可用 `-Sync` 更新核心规范。
 - **安全提交门禁**：提交前必须检查暂存区，过滤 `.env`、IDE 配置、本地设置、构建产物和真实凭证。
 - **五个核心 Skill**：产品方案、开发实施、代码审查、问题诊断、规范评估。
+- **Skill 策略可切换**：默认 `project-first`；用户可改为 `local-first` 或 `hybrid`，决定项目 Skill、本地 Skill 或两者兼顾。
 
 ## 动态加载策略
 
