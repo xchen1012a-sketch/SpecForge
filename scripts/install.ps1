@@ -33,6 +33,19 @@ if (-not (Test-Path -LiteralPath $targetFullPath -PathType Container)) {
     throw "Target project directory does not exist: $targetFullPath"
 }
 
+$forbiddenGlobalRoots = @(
+    (Join-Path $HOME '.claude'),
+    (Join-Path $HOME '.codex'),
+    (Join-Path $HOME '.cursor'),
+    (Join-Path $HOME '.agents')
+) | ForEach-Object { [System.IO.Path]::GetFullPath($_).TrimEnd('\') }
+foreach ($forbiddenRoot in $forbiddenGlobalRoots) {
+    if ($targetFullPath.Equals($forbiddenRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        $targetFullPath.StartsWith($forbiddenRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw "SpecForge is project-only and cannot target user-global AI configuration: $targetFullPath"
+    }
+}
+
 if ($targetFullPath -eq [System.IO.Path]::GetFullPath($sourceRoot)) {
     throw 'Target project cannot be the template source directory.'
 }
@@ -158,7 +171,7 @@ function Detect-ProjectType {
 
     $pythonSignals = ((Read-FileIfExists -Path (Join-Path $ProjectRoot 'requirements.txt')) + "`n" + (Read-FileIfExists -Path (Join-Path $ProjectRoot 'pyproject.toml'))).ToLowerInvariant()
     if ($pythonSignals.Trim()) {
-        if ($pythonSignals -match '(openai|langchain|llama-index|llamaindex|transformers|sentence-transformers|chromadb|faiss)') {
+        if ($pythonSignals -match '(openai|anthropic|litellm|pydantic-ai|semantic-kernel|langchain|llama-index|llamaindex|transformers|sentence-transformers|chromadb|faiss)') {
             return 'ai-llm'
         }
         return 'backend'
@@ -814,21 +827,27 @@ function Write-QuickRefSkeleton {
     if (-not (Test-Path -LiteralPath $quickRefPath -PathType Leaf)) { return }
 
     $inventory = Get-ProjectInventory -ProjectRoot $ProjectRoot -IsMultiProject $false
+    $maintenanceIntervalDays = switch ($ProjectSize) {
+        { $_ -in @('tiny', 'small') } { 30; break }
+        'medium' { 14; break }
+        { $_ -in @('large', 'enterprise') } { 7; break }
+        default { 14 }
+    }
+    $maintenanceDue = (Get-Date).Date.AddDays($maintenanceIntervalDays).ToString('yyyy-MM-dd')
     $script:actions.Add("RENDER $quickRefPath (project-size context strategy)")
     if ($Apply) {
         $content = @"
 # Quick Ref
 
-> daily startup entry: true
+> daily startup entry: true; when maintenanceDue is reached read workflows/context-maintenance.md; read large files in chunks of at most 250 lines
 > status: TEMPLATE_PLACEHOLDER
 > dailyEntry: true
 > dynamicContextGate: true
+> outputLanguage: zh-CN
+> maintenanceDue: $maintenanceDue
 > projectSize: $ProjectSize
 > sizeStrategy: $SizeStrategy
 > generated becomes GENERATED only after AI summarizes real project facts.
-
----
-
 ## Project positioning
 
 - projectType: $ProjectType
@@ -848,8 +867,12 @@ function Write-QuickRefSkeleton {
 | L0 | this file only | project location is unclear |
 | L1 | this file + exact target file/snippet | behavior changes |
 | L2 | this file + core-lite/delivery-lite.md + related source | tests/security are touched |
-| L3 | business-rules/contracts/full core as triggered | API/DB/Auth/business rules change |
+| L3 | matched business-rules/contracts/core sections | public contract/auth/migration/sensitive-data boundary actually changes |
 | L4 | AI-START.md + full onboarding/audit context | user asks onboarding/audit/refactor |
+
+## Planning auto-trigger gate
+
+Before implementation, evaluate automatically; no user reminder is required. For project-wide or staged development, 3+ expected phases, a plan over 200 lines, or multiple modules needing separate acceptance, read `workflows/project-planning.md`. If `docs/plans/current.md` exists, resume its phase instead of regenerating the project plan. Skip this for simple edits, single-file tasks, and ordinary bugs.
 
 ## Business facts
 
@@ -976,7 +999,7 @@ function Write-SpecForgeIndex {
 
 function Get-SyncRelativePaths {
     $relativePaths = [System.Collections.Generic.List[string]]::new()
-    foreach ($file in @('AI-START.md', 'README.md', 'scripts\validate.ps1')) {
+    foreach ($file in @('AI-START.md', 'README.md', 'scripts\validate.ps1', 'scripts\update.ps1', 'scripts\update.cmd', 'scripts\maintain-context.ps1', 'scripts\audit-global-context.ps1')) {
         $relativePaths.Add($file)
     }
 
@@ -1012,6 +1035,81 @@ function Copy-SyncFile {
     }
 }
 
+function Ensure-InstanceCompatibilityDefaults {
+    param([string]$SpecRoot)
+
+    $profilePath = Join-Path $SpecRoot 'ai-spec.yaml'
+    if (Test-Path -LiteralPath $profilePath -PathType Leaf) {
+        $profile = Get-Content -Raw -Encoding UTF8 -LiteralPath $profilePath
+        $newline = if ($profile.Contains("`r`n")) { "`r`n" } else { "`n" }
+        $updatedProfile = $profile
+
+        if ($updatedProfile -notmatch '(?m)^  scope:\s*project-only\b') {
+            $updatedProfile = [regex]::Replace($updatedProfile, '(?m)^spec:\s*$', "spec:${newline}  scope: project-only         # compatibility default; project scope only", 1)
+        }
+        if ($updatedProfile -notmatch '(?m)^  maintenance:\s*$') {
+            $maintenanceBlock = @(
+                '  maintenance:',
+                '    enabled: true',
+                '    strategy: lazy',
+                '    autoApply: safe-only',
+                '    intervalDaysBySize: { tiny: 30, small: 30, medium: 14, large: 7, enterprise: 7 }',
+                '    quickRefMaxLines: 40',
+                '    currentPlanMaxLines: 80',
+                '    singleReadMaxLines: 250'
+            ) -join $newline
+            $updatedProfile = [regex]::Replace($updatedProfile, '(?m)^  projectSizeSignals:', ($maintenanceBlock + $newline + '  projectSizeSignals:'), 1)
+        }
+        if ($updatedProfile -notmatch '(?m)^  outputLanguage:\s*$') {
+            $languageBlock = "  outputLanguage:${newline}    default: zh-CN${newline}    locked: true"
+            $updatedProfile = [regex]::Replace($updatedProfile, '(?m)^(  specPath:.*)$', ('$1' + $newline + $languageBlock), 1)
+        }
+        if ($updatedProfile -notmatch '(?m)^  skillPolicy:\s*$') {
+            $updatedProfile = $updatedProfile.TrimEnd() + $newline + "  skillPolicy:${newline}    mode: project-first${newline}    allowLocalSkills: true${newline}    reportSkillSource: true" + $newline
+        }
+
+        if ($updatedProfile -ne $profile) {
+            $script:actions.Add("MIGRATE $profilePath (add missing project-only compatibility defaults)")
+            if ($Apply) {
+                [System.IO.File]::WriteAllText($profilePath, $updatedProfile, [System.Text.UTF8Encoding]::new($false))
+            }
+        }
+    }
+
+    $quickRefPath = Join-Path $SpecRoot 'business\quick-ref.md'
+    if (Test-Path -LiteralPath $quickRefPath -PathType Leaf) {
+        $quickRef = Get-Content -Raw -Encoding UTF8 -LiteralPath $quickRefPath
+        $newline = if ($quickRef.Contains("`r`n")) { "`r`n" } else { "`n" }
+        $updatedQuickRef = $quickRef
+        if ($updatedQuickRef -notmatch '(?m)^>\s*outputLanguage:\s*zh-CN\s*$') {
+            $updatedQuickRef = [regex]::Replace($updatedQuickRef, '(?m)^(>\s*dynamicContextGate:.*)$', ('$1' + $newline + '> outputLanguage: zh-CN'), 1)
+        }
+        if ($updatedQuickRef -notmatch '(?m)^>\s*maintenanceDue:\s*(auto|\d{4}-\d{2}-\d{2})\s*$') {
+            $maintenanceDue = (Get-Date).Date.AddDays(14).ToString('yyyy-MM-dd')
+            $updatedQuickRef = [regex]::Replace($updatedQuickRef, '(?m)^(>\s*outputLanguage:.*)$', ('$1' + $newline + "> maintenanceDue: $maintenanceDue"), 1)
+        }
+
+        $quickLines = [System.Collections.Generic.List[string]]::new()
+        foreach ($line in @($updatedQuickRef -split '\r?\n')) { $quickLines.Add($line) }
+        while ($quickLines.Count -gt 40) {
+            $blankIndex = -1
+            for ($i = $quickLines.Count - 1; $i -ge 0; $i--) {
+                if ([string]::IsNullOrWhiteSpace($quickLines[$i])) { $blankIndex = $i; break }
+            }
+            if ($blankIndex -lt 0) { break }
+            $quickLines.RemoveAt($blankIndex)
+        }
+        $updatedQuickRef = [string]::Join($newline, $quickLines).TrimEnd() + $newline
+
+        if ($updatedQuickRef -ne $quickRef) {
+            $script:actions.Add("MIGRATE $quickRefPath (add missing lightweight compatibility markers)")
+            if ($Apply) {
+                [System.IO.File]::WriteAllText($quickRefPath, $updatedQuickRef, [System.Text.UTF8Encoding]::new($false))
+            }
+        }
+    }
+}
+
 function Sync-SpecInstance {
     param([string]$SpecRoot)
 
@@ -1023,6 +1121,7 @@ function Sync-SpecInstance {
     foreach ($relativePath in Get-SyncRelativePaths) {
         Copy-SyncFile -SpecRoot $SpecRoot -RelativePath $relativePath
     }
+    Ensure-InstanceCompatibilityDefaults -SpecRoot $SpecRoot
 }
 
 function Update-SpecForgeIndexVersion {
@@ -1171,6 +1270,13 @@ foreach ($report in $installReports) {
 }
 Write-Host "Actions: $($actions.Count)"
 foreach ($action in $actions) { Write-Host "- $action" }
+
+if ($Onboard -and $Tools -contains 'claude-code') {
+    $globalAuditScript = Join-Path $sourceRoot 'scripts\audit-global-context.ps1'
+    if (Test-Path -LiteralPath $globalAuditScript -PathType Leaf) {
+        & $globalAuditScript
+    }
+}
 
 if ($conflicts.Count -gt 0) {
     Write-Host "Existing files kept unchanged: $($conflicts.Count)" -ForegroundColor Yellow

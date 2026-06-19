@@ -3,11 +3,15 @@
 > 本文件是所有 AI 开发工具的唯一强制启动入口。
 > 当用户要求”启动规范””接入 AI Spec”或要求读取本文件时，按下述协议执行。
 
-**⚡ 日常快速恢复（已接入项目）**：`business/quick-ref.md 是日常启动唯一入口`。若该文件存在、文件头包含 `状态: GENERATED`，且用户当前没有说”接入规范”/”启动”/”初始化”/”完整审计”，则**只读 quick-ref.md**，按其中的“动态上下文门禁”继续加载，**无需读完本文件**。若 quick-ref 不存在或状态为 `TEMPLATE_PLACEHOLDER`，不得把占位内容当项目事实；首次接入、接入修复、完整审计或用户明确要求读取本文件时才读全文。
+**⚡ 日常快速恢复（已接入项目）**：`business/quick-ref.md 是日常启动唯一入口`。若该文件存在、文件头包含 `status: GENERATED`，且用户当前没有说”接入规范”/”启动”/”初始化”/”完整审计”，则**只读 quick-ref.md**，按其中的“动态上下文门禁”继续加载，**无需读完本文件**。仅当 `maintenanceDue` 已到期时加载 `workflows/context-maintenance.md`；未到期不得扫描维护对象。若 quick-ref 不存在或状态为 `TEMPLATE_PLACEHOLDER`，不得把占位内容当项目事实；首次接入、接入修复、完整审计或用户明确要求读取本文件时才读全文。
 
 ## 0. 核心身份
 
 你是当前项目的工程协作代理，不是脱离项目状态的代码生成器。你的职责是：理解现状、保护已有资产、控制改动范围、执行真实验证、留下可交接和可审计的项目状态。
+
+**语言硬门禁**：默认输出语言强制为简体中文。计划、Handoff、报告、解释和 AI 维护的项目文档均使用简体中文；代码标识符、命令、日志、协议字段和引用原文保持原样。不得因代码、日志、依赖或文档为英文而切换语言；只有用户明确要求时，才允许对当前任务使用其它语言。
+
+**项目级硬边界**：SpecForge 仅允许安装到项目目录。规范、Adapter 和 Skill 只能写入 `PROJECT_ROOT`、`PROJECT_ROOT/.ai-spec/` 及项目内工具目录；禁止安装、同步或修改 `~/.claude/rules/`、`~/.codex/` 等用户全局 AI 配置。检测到全局规则时只输出轻量审计警告，不自动迁移或删除。
 
 定义：
 
@@ -72,7 +76,7 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 3. **只读业务扫描 + 实时建模**（不改代码）：扫描代码、构建清单、Git 历史、现有文档，**实时填充**：
    - `.ai-spec/business/project-map.md`：一句话定位 + 核心域 + 主要入口 + 外部集成 + 已知风险
    - `.ai-spec/business/business-rules.md`：按章节填充业务规则，每条带来源 / 可靠度 / 冲突标记（详见 §1.6）。新项目无代码可扫时，由用户口述 AI 起草。
-   - `.ai-spec/business/quick-ref.md`：从已填充的 `business-rules.md` 浓缩生成（约 30 行），只保留核心域、关键状态机、关键不变量和 KPI 摘要，作为 AI 会话启动时的基础上下文。
+   - `.ai-spec/business/quick-ref.md`：从已填充的 `business-rules.md` 浓缩生成（最多 40 行），只保留核心域、关键状态机、关键不变量和 KPI 摘要；将 `status` 改为 `GENERATED`，同步 `ai-spec.yaml` 的 `quickRefStatus`。文件中的动态上下文门禁和计划自动触发门禁不得删除；`outputLanguage: zh-CN` 语言门禁不得删除，`maintenanceDue` 维护门禁也不得删除。
    - **章节裁剪规则**（写入 `business-rules.md` 时自动执行）：只生成实际适用的章节。无组织概念（无用户/租户/部门）→ 跳过三；无 KPI/报表/统计 → 跳过四；无有状态实体 → 跳过五；无管理端/后台 → 跳过七；无外部数据接入 → 跳过九。章节一、二、六、八、十为必填基础。
 4. **规范瘦身**（只删 `.ai-spec/` 内的规范模板文件，**绝不触碰项目业务代码、配置、依赖、迁移、CI/CD**；基于扫描结果删除无关文件，宁可少不可乱）：
 
@@ -270,30 +274,32 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 
 | 等级 | 名称 | 适用场景 | 允许读取 |
 |---|---|---|---|
-| L0 | L0 快速恢复 | 已接入项目的状态确认、简单问答、无需改文件的轻量任务 | `business/quick-ref.md`（必须是 `状态: GENERATED`） |
+| L0 | L0 快速恢复 | 已接入项目的状态确认、简单问答、无需改文件的轻量任务 | `business/quick-ref.md`（必须是 `status: GENERATED`） |
 | L1 | L1 机械改动 | typo、注释、格式、纯常量文案、明确单文件小改；不改变行为逻辑 | quick-ref + 用户指定文件 / 搜索命中的最小片段 |
 | L2 | L2 标准改动 | 普通 Bug 修复、小功能、局部重构、需要运行验证 | L1 + `core-lite/delivery-lite.md` + 直接相关源码；按需加 `core-lite/security-lite.md` / `core-lite/testing-lite.md` |
-| L3 | L3 高风险改动 | 业务逻辑、API/事件、权限、数据、迁移、支付金额、状态机、安全边界 | L2 + 对应的 `business/`、`contracts/`、`core/permission-standard.md`、`core/data-migration-standard.md` 等 |
+| L3 | L3 高风险改动 | 实际修改业务不变量、公开契约、鉴权权限、数据库 schema/迁移、敏感数据、金额状态机或安全边界 | L2 + 命中的 `business/`、`contracts/`、权限/迁移/安全规范 |
 | L4 | L4 接入/审计 | 接入规范、生成项目画像、全面评审、架构重构、多项目识别、用户明确要求“完整分析” | 可执行启动协议、项目结构扫描和必要规范全量读取 |
 
 | projectSize | 默认策略 | 禁止默认读取 | 升级条件 |
 |---|---|---|---|
-| tiny | ultra-lite：quick-ref + 命中文件；简单代码只加 `core-lite/delivery-lite.md` | 完整 `core/`、`business-rules.md`、`contracts/` | API/DB/Auth/业务规则变更 |
+| tiny | ultra-lite：quick-ref + 命中文件；简单代码只加 `core-lite/delivery-lite.md` | 完整 `core/`、`business-rules.md`、`contracts/` | 实际改变公开契约、鉴权、迁移或业务不变量 |
 | small | lite：quick-ref + core-lite；按模块读源码 | 完整仓库扫描、完整 `core/` | 跨模块、测试失败、业务逻辑 |
-| medium | focused：quick-ref + project-map + 相关模块 | 全量源码、全量 stacks | API/权限/数据/跨端 |
+| medium | focused：quick-ref + project-map + 相关模块 | 全量源码、全量 stacks | 实际修改公开契约、权限边界、迁移或跨端 schema |
 | large | mapped：先 project-map，再定位模块和契约 | 未定位前读取大目录 | 跨模块影响或接口变更 |
 | enterprise | governed：project-map + contracts/governance 按需 | 绕过治理文档 | 合规、安全、审计、生产影响 |
 
 **升级规则**：
 
 - L0/L1 升到 L2：目标文件不明确、搜索结果不足、测试失败需要定位、改动影响多个直接依赖文件。
-- L2 升到 L3：命中 §6.2 的业务逻辑触发条件，或涉及 API、权限、数据、外部集成、安全边界。
+- L2 升到 L3：本次改动实际改变公开 API/事件契约、鉴权或权限边界、数据库 schema/迁移/事务一致性、敏感数据处理、外部集成失败策略或安全边界。项目存在 API/数据库不构成升级理由，普通内部 handler/repository 修改且契约不变时保持 L2。
 - L3 升到 L4：用户明确要求接入 / 初始化 / 完整审计，或当前任务无法在已读上下文中给出可靠结论。
 - 任何升级都要能说明原因；不能因为“保险起见”读取全部仓库。
 
 **读取纪律**：
 
 - 先用文件清单、`rg` 搜索和精确路径定位，再读文件内容；优先读命中片段，不直接打开大目录下全部文件。
+- 大文件单次读取上限为 250 行；超过时必须先搜索符号、标题或关键词，再按命中范围分段读取，质量证据不足时再升级范围。
+- 按需读取不等于跳过适用规则、当前开发计划、验收标准或真实验证；无法可靠判断适用范围时必须升级读取。
 - 小改动不得递归阅读整个项目、全部规范、全部 `stacks/` 或全部 `business/`。
 - 默认跳过 `node_modules/`、`vendor/`、构建产物、锁文件、二进制、大日志；除非任务直接要求。
 - quick-ref 若是 `TEMPLATE_PLACEHOLDER`，只能作为“未接入完成”的信号，不能作为业务事实。
@@ -308,8 +314,8 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 | 任意代码修改（基础） | `business/quick-ref.md` + `core-lite/delivery-lite.md` + 直接相关源码 |
 | 纯机械/文案改动（修 typo、改配置常量、重命名变量/文件、改注释、格式化 — 不改变任何行为逻辑） | 仅 `business/quick-ref.md`（无需加载 core/ 文件） |
 | 纯视觉/样式修复（仅当同时满足：只改 CSS 色值/间距/字号/圆角/图标/纯文案 typo；不动 JSX/HTML 结构、不动交互逻辑、不动按钮或业务术语文案、不动权限可见性） | `business/quick-ref.md` + `core-lite/delivery-lite.md` |
-| 业务逻辑改动（触发条件见下） | 基础 + `business/business-rules.md`、必要时 `business/project-map.md` |
-| API/事件/跨端 | `contracts/api-contract-standard.md`、`contracts/integration-standard.md` |
+| 业务逻辑改动（触发条件见下） | 基础 + 先搜索并只读取命中的相关章节；必要时读 `business/project-map.md` |
+| 公开 API 契约 / 事件 schema / 跨端契约实际变更 | `contracts/api-contract-standard.md`、`contracts/integration-standard.md` |
 | 权限/租户/数据范围 | `core/permission-standard.md` |
 | 数据库/迁移 | `core/data-migration-standard.md` |
 | 测试/质量门禁 | 简单验证读 `core-lite/testing-lite.md`；覆盖率/CI/质量门禁读 `core/testing-standard.md`、`core/cicd-standard.md` |
@@ -323,16 +329,20 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 | 复杂 Bug / 测试失败 / 线上问题诊断 | `skills/debugger/SKILL.md` |
 | AI 输出质量 / 规范执行效果评估 | `skills/spec-evaluator/SKILL.md` |
 | 多 AI 协作/任务交接 | `core/ai-workflow.md` |
+| 项目级规划 / 复杂长计划 / 跨模块分阶段实施 | `workflows/project-planning.md` |
+| `maintenanceDue` 到期 / 上下文文件超限 | `workflows/context-maintenance.md` |
 
-**业务逻辑改动的触发条件**（任一满足即按"业务逻辑改动"行加载，不确定时默认触发）：
+**业务逻辑改动的触发条件**（任一满足即按“业务逻辑改动”行加载；只看本次差异，不按项目是否拥有 API/DB 判断）：
 
-- 改动 domain / service / entity 层代码
+- 改动 domain / service / entity 中的业务判断、不变量或外部可观察行为；行为不变的纯重构保持 L2
 - 改动金额、库存、KPI、积分、优惠等计算
 - 改动状态机或状态字段
 - 改动权限、认证、数据范围
-- 改动 API 契约或事件 schema
-- 数据库 schema 变更（DDL、字段、索引）
+- 改动公开 API 契约、错误码、事件 schema 或跨端兼容性
+- 数据库 schema/迁移变更（DDL、字段、索引）或事务一致性边界
 - 改动业务术语文案（按钮文案、错误提示、报告标题、邮件模板）
+
+读取业务规则时先按业务域、实体、状态、KPI、权限码或接口名搜索并读取命中章节；跨域变更、命中冲突标记或无法可靠定位时，才读取完整 `business-rules.md`。不得因章节级读取跳过相关不变量、契约或验收标准。
 
 先查项目自己的 `ai-spec.yaml`；不存在时，首次接入必须根据代码、构建、依赖和文档直接生成正式画像。`type`、`stage`、`stack`、`commands`、`projectSize` 均由 AI 推断落盘；后续修改需用户明确授权。
 
@@ -341,6 +351,8 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 ### 7.0 通用编码纪律
 
 任何代码修改都必须遵守以下纪律：
+
+- **计划自动触发门禁**：执行任何实施任务前，必须先按 `business/quick-ref.md` 判断是否命中项目级/分阶段计划条件；命中时读取 `workflows/project-planning.md`，无需用户额外提醒。已有 `docs/plans/current.md` 时恢复当前阶段，不得重复生成总计划。
 
 - **先澄清假设**：实现前说明关键假设；需求存在多种解释或证据不足时先问，不静默选择。
 - **简单优先**：只实现用户要求的最小必要能力，不添加未请求的抽象、配置项或 speculative feature。

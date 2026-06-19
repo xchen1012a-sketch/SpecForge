@@ -12,7 +12,7 @@ description: 将模糊想法、业务需求和跨模块变更转化为可实施�
 > 假定 AI-START.md §1.5-§1.6 启动协议已完成，项目阶段和业务逻辑已识别。
 > 上下文路由按 AI-START.md §6 执行，本 Skill 不建立第二套路由规则。
 
-1. 读取项目根目录的 `AI-START.md`；不存在时，定位等价的 AI 入口。
+1. `business/quick-ref.md` 为 `GENERATED` 时先读它并按门禁加载；缺失、占位或执行接入/完整审计时才读 `AI-START.md`。
 2. 只读扫描项目结构、配置、契约、数据模型、权限、测试和相似功能。
 3. 识别 project-native 目录、命名、分层、错误处理、鉴权、构建和测试约定，不凭经验另造体系。
 4. 将信息分成 confirmed facts（已确认事实）、assumptions（假设）、open questions（待确认问题）和 decisions（设计结论）。

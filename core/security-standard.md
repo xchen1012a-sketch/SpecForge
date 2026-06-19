@@ -68,12 +68,14 @@ fallbackTo: core-lite/security-lite.md
 |---|---|
 | SQL 注入 | 永远用参数化查询 / Prepared Statement；**禁止**字符串拼接 SQL |
 | XSS | 输出转义；禁止 `innerHTML` / `dangerouslySetInnerHTML` 未净化使用；CSP 头 |
-| CSRF | 写操作用 Token / SameSite Cookie |
+| CSRF | 仅 Cookie/浏览器会话且凭证会被自动携带时适用：CSRF Token + SameSite；显式 Authorization Header 的 Bearer Token API 不因“有写操作”自动要求 CSRF，但仍需防 XSS、重放和 Token 泄露 |
 | SSRF | 外部 URL 请求前校验协议 + 域名白名单；禁止直接请求用户传入的 URL |
 | 路径遍历 | 文件路径校验、白名单字符、不信任用户输入拼路径 |
 | XXE | XML 解析禁用外部实体 |
 | 反序列化 | 不反序列化不可信数据；用 JSON 不用二进制序列化 |
 | 命令注入 | 不拼 shell 命令；用 SDK / 参数数组 |
+
+AI/LLM 项目还必须读取 `stacks/ai-llm-app.md`：不可信用户输入与系统指令分层，模型输出使用 JSON Schema / Function Calling 约束，并在执行外部动作前重新鉴权和验证。
 
 ---
 

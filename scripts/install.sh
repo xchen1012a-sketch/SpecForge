@@ -108,7 +108,7 @@ sync_file() {
 }
 
 if [ "$SYNC" -eq 1 ]; then
-  for rel in AI-START.md README.md scripts/validate.ps1; do
+  for rel in AI-START.md README.md scripts/validate.ps1 scripts/update.ps1 scripts/update.cmd scripts/maintain-context.ps1 scripts/audit-global-context.ps1; do
     sync_file "$rel"
   done
   for dir in core core-lite contracts governance skills workflows; do

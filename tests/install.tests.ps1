@@ -11,6 +11,17 @@ function Assert-Test {
 
 try {
     New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
+    $fakeGlobalRules = Join-Path $tempRoot 'global-rules'
+    New-Item -ItemType Directory -Force -Path (Join-Path $fakeGlobalRules 'common'), (Join-Path $fakeGlobalRules 'zh') | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $fakeGlobalRules 'common\agents.md'), "# Immediate Agent Usage`nUse code-reviewer after every edit.`n", [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText((Join-Path $fakeGlobalRules 'zh\agents.md'), "# 立即使用代理`n80% coverage`n", [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText((Join-Path $fakeGlobalRules 'python.md'), "---`npaths:`n  - '**/*.py'`n---`n# Python`n", [System.Text.UTF8Encoding]::new($false))
+    $globalAuditOutput = & (Join-Path $root 'scripts\audit-global-context.ps1') -RulesRoot $fakeGlobalRules -MaxAlwaysOnFiles 1 -MaxAlwaysOnBytes 1 6>&1
+    $globalAuditText = [string]::Join("`n", @($globalAuditOutput))
+    Assert-Test ($globalAuditText.Contains('GLOBAL_CONTEXT_WARNING')) 'Global context audit did not flag oversized always-on rules'
+    Assert-Test ($globalAuditText.Contains('alwaysOn=2')) 'Global context audit misclassified path-scoped rules'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $fakeGlobalRules 'common\agents.md')) 'Global context audit modified user rules'
+
     $safeRoot = Join-Path $tempRoot 'safe-copy'
     New-Item -ItemType Directory -Force -Path $safeRoot | Out-Null
     $ownedClaude = Join-Path $safeRoot 'CLAUDE.md'
@@ -51,6 +62,12 @@ try {
     Assert-Test ($profile.Contains('mode: project-first')) 'Installer did not write project-first skill mode'
     Assert-Test ($profile.Contains('allowLocalSkills: true')) 'Installer did not allow local skills as explicit policy'
     Assert-Test ($profile.Contains('reportSkillSource: true')) 'Installer did not require skill source reporting'
+    Assert-Test ($profile.Contains('outputLanguage:')) 'Installer did not persist output language policy'
+    Assert-Test ($profile.Contains('default: zh-CN')) 'Installer did not default output language to Simplified Chinese'
+    Assert-Test ($profile.Contains('locked: true')) 'Installer did not lock the default output language'
+    Assert-Test ($profile.Contains('strategy: lazy')) 'Installer did not persist lazy context maintenance'
+    Assert-Test ($profile.Contains('autoApply: safe-only')) 'Installer maintenance is not stability-first'
+    Assert-Test ($profile.Contains('scope: project-only')) 'Installer did not persist project-only scope'
 
     & $installer -TargetRoot $safeRoot -Mode existing -Tools 'generic' -Apply *> $null
     Assert-Test (-not (Test-Path -LiteralPath (Join-Path $safeRoot '.ai-spec\ai-spec.yaml.draft'))) 'Installer should not create ai-spec.yaml.draft by default'
@@ -104,11 +121,18 @@ try {
     Assert-Test ($frontendProfile.Contains('skillPolicy:')) 'Frontend profile missing default skill policy'
     Assert-Test ($frontendProfile.Contains('mode: project-first')) 'Frontend profile missing project-first skill mode'
     $frontendQuickRef = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\business\quick-ref.md')
-    Assert-Test ($frontendQuickRef.Contains('TEMPLATE_PLACEHOLDER')) 'Installed quick-ref missing placeholder status'
+    Assert-Test ($frontendQuickRef.Contains('status: TEMPLATE_PLACEHOLDER')) 'Installed quick-ref status marker does not match the startup protocol'
     Assert-Test ($frontendQuickRef.Contains('dailyEntry: true')) 'Installed quick-ref is not the daily startup entry'
     Assert-Test ($frontendQuickRef.Contains('dynamicContextGate: true')) 'Installed quick-ref missing dynamic context gate'
     Assert-Test ($frontendQuickRef.Contains('projectSize: tiny')) 'Installed quick-ref missing project size'
     Assert-Test ($frontendQuickRef.Contains('sizeStrategy: ultra-lite')) 'Installed quick-ref missing tiny size strategy'
+    Assert-Test ($frontendQuickRef.Contains('outputLanguage: zh-CN')) 'Installed quick-ref missing Simplified Chinese output lock'
+    Assert-Test ($frontendQuickRef -match 'maintenanceDue: \d{4}-\d{2}-\d{2}') 'Installed quick-ref missing concrete maintenance due date'
+    Assert-Test ($frontendQuickRef.Contains('250')) 'Installed quick-ref missing large-file chunk budget'
+    Assert-Test ($frontendQuickRef.Contains('Planning auto-trigger gate')) 'Installed quick-ref missing automatic planning gate'
+    Assert-Test ($frontendQuickRef.Contains('workflows/project-planning.md')) 'Installed quick-ref missing project planning workflow route'
+    Assert-Test ($frontendQuickRef.Contains('docs/plans/current.md')) 'Installed quick-ref missing current plan resume route'
+    Assert-Test (@($frontendQuickRef -split "`r?`n").Count -le 40) 'Installed quick-ref exceeds the 40-line token budget'
 
     $frontendRules = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\business\business-rules.md')
     Assert-Test ($frontendRules.Contains('omittedSections:')) 'Installed business-rules should record omitted sections'
@@ -132,6 +156,10 @@ try {
     Assert-Test (-not (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\tests'))) 'Onboard mode did not remove template self-tests'
     Assert-Test (-not (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\scripts\install.ps1'))) 'Onboard mode did not remove one-time installer'
     Assert-Test (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\scripts\validate.ps1')) 'Onboard mode removed validate.ps1'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\scripts\update.ps1')) 'Onboard mode removed update.ps1'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\scripts\update.cmd')) 'Onboard mode removed update.cmd'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\scripts\maintain-context.ps1')) 'Onboard mode removed maintain-context.ps1'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\scripts\audit-global-context.ps1')) 'Onboard mode removed audit-global-context.ps1'
     Assert-Test (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\adapters\codex')) 'Onboard mode did not retain selected adapter'
     Assert-Test (-not (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\adapters\cursor'))) 'Onboard mode kept unused adapter'
     & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null
@@ -149,6 +177,172 @@ try {
     }
     Assert-Test $missingSkillPolicyFailed 'Installed validate.ps1 did not fail when ai.skillPolicy was missing'
     [System.IO.File]::WriteAllText($frontendProfilePath, $profileWithSkillPolicy, [System.Text.UTF8Encoding]::new($false))
+
+    $profileWithoutLanguageLock = $profileWithSkillPolicy -replace '(?ms)\r?\n  outputLanguage:\r?\n    default:.*?\r?\n    locked:.*?(?=\r?\n  skillPolicy:)', ''
+    [System.IO.File]::WriteAllText($frontendProfilePath, $profileWithoutLanguageLock, [System.Text.UTF8Encoding]::new($false))
+    $missingLanguageLockFailed = $false
+    try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $missingLanguageLockFailed = $true }
+    Assert-Test $missingLanguageLockFailed 'Installed validate.ps1 did not reject a missing Simplified Chinese language lock'
+    [System.IO.File]::WriteAllText($frontendProfilePath, $profileWithSkillPolicy, [System.Text.UTF8Encoding]::new($false))
+
+    $frontendQuickRefPath = Join-Path $frontend '.ai-spec\business\quick-ref.md'
+    $validQuickRef = Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendQuickRefPath
+    $quickRefWithoutLanguageLock = $validQuickRef -replace '(?m)^> outputLanguage: zh-CN\r?\n', ''
+    [System.IO.File]::WriteAllText($frontendQuickRefPath, $quickRefWithoutLanguageLock, [System.Text.UTF8Encoding]::new($false))
+    $missingQuickRefLanguageFailed = $false
+    try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $missingQuickRefLanguageFailed = $true }
+    Assert-Test $missingQuickRefLanguageFailed 'Installed validate.ps1 did not reject a quick-ref without outputLanguage: zh-CN'
+    [System.IO.File]::WriteAllText($frontendQuickRefPath, $validQuickRef, [System.Text.UTF8Encoding]::new($false))
+
+    $semanticProfile = $profileWithSkillPolicy -replace 'quickRefStatus: TEMPLATE_PLACEHOLDER', 'quickRefStatus: GENERATED'
+    $semanticQuickRef = $validQuickRef -replace 'status: TEMPLATE_PLACEHOLDER', 'status: GENERATED'
+    [System.IO.File]::WriteAllText($frontendProfilePath, $semanticProfile, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($frontendQuickRefPath, $semanticQuickRef, [System.Text.UTF8Encoding]::new($false))
+    $semanticQuickRefFailed = $false
+    $semanticQuickRefError = ''
+    try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $semanticQuickRefFailed = $true; $semanticQuickRefError = $_.Exception.Message }
+    Assert-Test ($semanticQuickRefFailed -and $semanticQuickRefError.Contains('Generated quick-ref still contains placeholder content')) 'Generated quick-ref accepted placeholder facts'
+
+    $semanticQuickRef = $semanticQuickRef -replace '(?m)^- TBD:.*$', '- provider-routing: confirmed'
+    [System.IO.File]::WriteAllText($frontendQuickRefPath, $semanticQuickRef, [System.Text.UTF8Encoding]::new($false))
+    $semanticRulesFailed = $false
+    $semanticRulesError = ''
+    try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $semanticRulesFailed = $true; $semanticRulesError = $_.Exception.Message }
+    Assert-Test ($semanticRulesFailed -and $semanticRulesError.Contains('Generated business rules still contain placeholder content')) 'Generated status accepted placeholder business rules'
+
+    $semanticRulesPath = Join-Path $frontend '.ai-spec\business\business-rules.md'
+    $semanticMapPath = Join-Path $frontend '.ai-spec\business\project-map.md'
+    $semanticRulesOriginal = Get-Content -Raw -Encoding UTF8 -LiteralPath $semanticRulesPath
+    $semanticMapOriginal = Get-Content -Raw -Encoding UTF8 -LiteralPath $semanticMapPath
+    [System.IO.File]::WriteAllText($semanticRulesPath, $semanticRulesOriginal.Replace('TBD', 'confirmed'), [System.Text.UTF8Encoding]::new($false))
+    $semanticEvidenceFailed = $false
+    $semanticEvidenceError = ''
+    try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $semanticEvidenceFailed = $true; $semanticEvidenceError = $_.Exception.Message }
+    Assert-Test ($semanticEvidenceFailed -and $semanticEvidenceError.Contains('Generated business rules lack source/reliability evidence markers')) 'Generated business rules accepted content without source/reliability evidence'
+
+    $sourceMarker = -join (@(0x6765, 0x6E90) | ForEach-Object { [char]$_ })
+    $reliabilityMarker = -join (@(0x53EF, 0x9760, 0x5EA6) | ForEach-Object { [char]$_ })
+    [System.IO.File]::WriteAllText($semanticRulesPath, ($semanticRulesOriginal.Replace('TBD', 'confirmed') + "`n- Provider routing is explicit. [$sourceMarker`: code] [$reliabilityMarker`: high]`n"), [System.Text.UTF8Encoding]::new($false))
+    $semanticMapFailed = $false
+    $semanticMapError = ''
+    try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $semanticMapFailed = $true; $semanticMapError = $_.Exception.Message }
+    Assert-Test ($semanticMapFailed -and $semanticMapError.Contains('Generated project map still contains placeholder content')) 'Generated status accepted placeholder project map'
+
+    [System.IO.File]::WriteAllText($semanticMapPath, "# Project map`n`n## Position`nOrbitAI provider orchestration.`n`n## Domains`n- Provider routing`n", [System.Text.UTF8Encoding]::new($false))
+    & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null
+    [System.IO.File]::WriteAllText($semanticRulesPath, $semanticRulesOriginal, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($semanticMapPath, $semanticMapOriginal, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($frontendProfilePath, $profileWithSkillPolicy, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($frontendQuickRefPath, $validQuickRef, [System.Text.UTF8Encoding]::new($false))
+    Add-Content -Encoding UTF8 -LiteralPath $frontendQuickRefPath -Value @('overflow-1', 'overflow-2', 'overflow-3', 'overflow-4', 'overflow-5')
+    $oversizedQuickRefFailed = $false
+    try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $oversizedQuickRefFailed = $true }
+    Assert-Test $oversizedQuickRefFailed 'Installed validate.ps1 did not reject a quick-ref over 40 lines'
+    [System.IO.File]::WriteAllText($frontendQuickRefPath, $validQuickRef, [System.Text.UTF8Encoding]::new($false))
+
+    $mismatchedQuickRef = $validQuickRef -replace '(?m)^(>[^\r\n]*?)TEMPLATE_PLACEHOLDER', '${1}GENERATED'
+    [System.IO.File]::WriteAllText($frontendQuickRefPath, $mismatchedQuickRef, [System.Text.UTF8Encoding]::new($false))
+    $statusMismatchFailed = $false
+    try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $statusMismatchFailed = $true }
+    Assert-Test $statusMismatchFailed 'Installed validate.ps1 did not reject quick-ref/ai-spec status drift'
+    [System.IO.File]::WriteAllText($frontendQuickRefPath, $validQuickRef, [System.Text.UTF8Encoding]::new($false))
+
+    $quickRefWithoutPlanningGate = $validQuickRef -replace '(?ms)\r?\n## Planning auto-trigger gate.*?(?=\r?\n## Business facts)', ''
+    [System.IO.File]::WriteAllText($frontendQuickRefPath, $quickRefWithoutPlanningGate, [System.Text.UTF8Encoding]::new($false))
+    $missingPlanningGateFailed = $false
+    try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $missingPlanningGateFailed = $true }
+    Assert-Test $missingPlanningGateFailed 'Installed validate.ps1 did not reject a removed planning gate'
+    [System.IO.File]::WriteAllText($frontendQuickRefPath, $validQuickRef, [System.Text.UTF8Encoding]::new($false))
+
+    $frontendAgentsPath = Join-Path $frontend 'AGENTS.md'
+    $validAgentsContent = Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendAgentsPath
+    [System.IO.File]::WriteAllText($frontendAgentsPath, 'Before any task, read .ai-spec/AI-START.md.', [System.Text.UTF8Encoding]::new($false))
+    $staleAdapterFailed = $false
+    try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $staleAdapterFailed = $true }
+    Assert-Test $staleAdapterFailed 'Installed validate.ps1 did not reject a stale full-read AI adapter'
+    [System.IO.File]::WriteAllText($frontendAgentsPath, $validAgentsContent, [System.Text.UTF8Encoding]::new($false))
+
+    $plansRoot = Join-Path $frontend 'docs\plans'
+    New-Item -ItemType Directory -Force -Path $plansRoot | Out-Null
+    [System.IO.File]::WriteAllLines((Join-Path $plansRoot 'current.md'), @(1..81 | ForEach-Object { "line-$_" }), [System.Text.UTF8Encoding]::new($false))
+    $oversizedCurrentPlanFailed = $false
+    try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $oversizedCurrentPlanFailed = $true }
+    Assert-Test $oversizedCurrentPlanFailed 'Installed validate.ps1 did not reject current.md over 80 lines'
+    Remove-Item -LiteralPath (Join-Path $plansRoot 'current.md') -Force
+
+    $phaseRoot = Join-Path $plansRoot 'phases'
+    New-Item -ItemType Directory -Force -Path $phaseRoot | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $phaseRoot '01-test.md'), "# Phase`n`n- **status**: completed`n`n## Acceptance evidence`n`n- command and result:`n- completion time:`n", [System.Text.UTF8Encoding]::new($false))
+    $missingPhaseEvidenceFailed = $false
+    try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $missingPhaseEvidenceFailed = $true }
+    Assert-Test $missingPhaseEvidenceFailed 'Installed validate.ps1 did not reject a completed phase without evidence'
+    Remove-Item -LiteralPath $plansRoot -Recurse -Force
+
+    $profileBeforeUpdater = Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendProfilePath
+    $rulesBeforeUpdater = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\business\business-rules.md')
+    $startBeforeUpdater = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\AI-START.md')
+    [System.IO.File]::WriteAllText((Join-Path $frontend '.ai-spec\AI-START.md'), 'stale-before-updater', [System.Text.UTF8Encoding]::new($false))
+    & (Join-Path $frontend '.ai-spec\scripts\update.ps1') -TargetRoot $frontend -SourceRoot $root -Apply *> $null
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\AI-START.md')) -eq $startBeforeUpdater) 'PowerShell updater did not refresh existing rules'
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendProfilePath) -eq $profileBeforeUpdater) 'PowerShell updater overwrote ai-spec.yaml'
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\business\business-rules.md')) -eq $rulesBeforeUpdater) 'PowerShell updater overwrote business rules'
+
+    $maintenanceQuickRefPath = Join-Path $frontend '.ai-spec\business\quick-ref.md'
+    $maintenanceProfilePath = Join-Path $frontend '.ai-spec\ai-spec.yaml'
+    $quickRefBeforeMaintenance = Get-Content -Raw -Encoding UTF8 -LiteralPath $maintenanceQuickRefPath
+    $profileBeforeMaintenance = Get-Content -Raw -Encoding UTF8 -LiteralPath $maintenanceProfilePath
+    $maintenanceQuickRef = $quickRefBeforeMaintenance -replace 'status: TEMPLATE_PLACEHOLDER', 'status: GENERATED' -replace 'maintenanceDue: \d{4}-\d{2}-\d{2}', 'maintenanceDue: 2026-06-18'
+    $maintenanceProfile = $profileBeforeMaintenance -replace 'quickRefStatus: TEMPLATE_PLACEHOLDER', 'quickRefStatus: GENERATED'
+    [System.IO.File]::WriteAllText($maintenanceQuickRefPath, $maintenanceQuickRef, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($maintenanceProfilePath, $maintenanceProfile, [System.Text.UTF8Encoding]::new($false))
+
+    $sessionsRoot = Join-Path $frontend '.ai-spec\sessions'
+    $handoffsRoot = Join-Path $frontend 'docs\handoffs'
+    New-Item -ItemType Directory -Force -Path $sessionsRoot, $handoffsRoot | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $sessionsRoot 'completed.md'), "# Session`n- status: completed`n", [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText((Join-Path $sessionsRoot 'active.md'), "# Session`n- status: active`n", [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText((Join-Path $handoffsRoot 'completed.md'), "# Handoff`n- status: completed`n", [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText((Join-Path $handoffsRoot 'active.md'), "# Handoff`n- status: active`n", [System.Text.UTF8Encoding]::new($false))
+
+    $maintenancePlansRoot = Join-Path $frontend 'docs\plans'
+    $maintenancePhasesRoot = Join-Path $maintenancePlansRoot 'phases'
+    New-Item -ItemType Directory -Force -Path $maintenancePhasesRoot | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $maintenancePlansRoot 'current.md'), "# Current`n- phase: phases/current-completed.md`n", [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText((Join-Path $maintenancePhasesRoot 'current-completed.md'), "# Current phase`n- status: completed`n", [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText((Join-Path $maintenancePhasesRoot 'old-completed.md'), "# Old phase`n- status: completed`n", [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText((Join-Path $maintenancePlansRoot 'project-plan.md'), "# Plan`n- phases/current-completed.md`n- phases/old-completed.md`n", [System.Text.UTF8Encoding]::new($false))
+
+    & (Join-Path $frontend '.ai-spec\scripts\maintain-context.ps1') -TargetRoot $frontend -Now ([datetime]'2026-06-19') *> $null
+    Assert-Test (Test-Path -LiteralPath (Join-Path $sessionsRoot 'completed.md')) 'Maintenance dry-run moved a completed session'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $handoffsRoot 'completed.md')) 'Maintenance dry-run moved a completed handoff'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $maintenancePhasesRoot 'old-completed.md')) 'Maintenance dry-run moved a completed phase'
+
+    & (Join-Path $frontend '.ai-spec\scripts\maintain-context.ps1') -TargetRoot $frontend -Now ([datetime]'2026-06-19') -Apply *> $null
+    Assert-Test (-not (Test-Path -LiteralPath (Join-Path $sessionsRoot 'completed.md'))) 'Maintenance apply did not archive completed session'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $sessionsRoot 'active.md')) 'Maintenance apply touched active session'
+    Assert-Test (-not (Test-Path -LiteralPath (Join-Path $handoffsRoot 'completed.md'))) 'Maintenance apply did not archive completed handoff'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $handoffsRoot 'active.md')) 'Maintenance apply touched active handoff'
+    Assert-Test ((Get-ChildItem -LiteralPath (Join-Path $sessionsRoot 'archive') -Recurse -File).Count -eq 1) 'Completed session archive count is incorrect'
+    Assert-Test ((Get-ChildItem -LiteralPath (Join-Path $handoffsRoot 'archive') -Recurse -File).Count -eq 1) 'Completed handoff archive count is incorrect'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $maintenancePhasesRoot 'current-completed.md')) 'Maintenance archived the phase referenced by current.md'
+    Assert-Test (-not (Test-Path -LiteralPath (Join-Path $maintenancePhasesRoot 'old-completed.md'))) 'Maintenance did not archive an unreferenced completed phase'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $maintenancePlansRoot 'archive\2026-06\old-completed.md')) 'Completed phase archive is missing'
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $maintenancePlansRoot 'project-plan.md')).Contains('archive/2026-06/old-completed.md')) 'Project plan link was not updated after phase archive'
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $maintenanceQuickRefPath) -match 'maintenanceDue: 2026-07-19') 'Maintenance apply did not advance tiny-project due date by 30 days'
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\business\business-rules.md')) -eq $rulesBeforeUpdater) 'Maintenance apply changed business rules'
+
+    $businessRulesPathForMaintenance = Join-Path $frontend '.ai-spec\business\business-rules.md'
+    $oversizedRules = $rulesBeforeUpdater + "`n" + ([string]::Join("`n", @(1..210 | ForEach-Object { "- retained-rule-$_" })))
+    [System.IO.File]::WriteAllText($businessRulesPathForMaintenance, $oversizedRules, [System.Text.UTF8Encoding]::new($false))
+    $maintenanceIssueOutput = & (Join-Path $frontend '.ai-spec\scripts\maintain-context.ps1') -TargetRoot $frontend -Now ([datetime]'2026-06-19') -Force -Apply 6>&1
+    $maintenanceIssueText = [string]::Join("`n", @($maintenanceIssueOutput))
+    Assert-Test ($maintenanceIssueText.Contains('COMPACT_REQUIRED business/business-rules.md')) 'Maintenance did not report oversized business rules'
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $businessRulesPathForMaintenance) -eq $oversizedRules) 'Maintenance mechanically truncated business rules'
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $maintenanceQuickRefPath) -match 'maintenanceDue: 2026-06-20') 'Unresolved compaction did not schedule a next-day reminder'
+    [System.IO.File]::WriteAllText($businessRulesPathForMaintenance, $rulesBeforeUpdater, [System.Text.UTF8Encoding]::new($false))
+
+    [System.IO.File]::WriteAllText($maintenanceQuickRefPath, $quickRefBeforeMaintenance, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($maintenanceProfilePath, $profileBeforeMaintenance, [System.Text.UTF8Encoding]::new($false))
 
     Add-Content -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\business\business-rules.md') -Value '[⚠️ 冲突 2026-06-19] code says A, rule says B'
     $conflictValidation = & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') 6>&1
@@ -172,6 +366,28 @@ try {
     Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendStart).Contains('Startup Protocol')) 'Sync did not refresh AI-START.md'
     Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendRulesPath) -eq 'project-owned-business-rules') 'Sync overwrote project-owned business rules'
     Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendProfilePath) -eq $profileBeforeSync) 'Sync overwrote ai-spec.yaml'
+
+    $legacyProfile = $profileBeforeSync `
+        -replace '(?m)^  scope: project-only.*\r?\n', '' `
+        -replace '(?ms)\r?\n  maintenance:\r?\n    enabled:.*?\r?\n    strategy:.*?\r?\n    autoApply:.*?\r?\n    intervalDaysBySize:.*?\r?\n    quickRefMaxLines:.*?\r?\n    currentPlanMaxLines:.*?\r?\n    singleReadMaxLines:.*?(?=\r?\n  projectSizeSignals:)', '' `
+        -replace '(?ms)\r?\n  outputLanguage:\r?\n    default:.*?\r?\n    locked:.*?(?=\r?\n  skillPolicy:)', ''
+    $legacyQuickRefPath = Join-Path $frontend '.ai-spec\business\quick-ref.md'
+    $legacyQuickRef = (Get-Content -Raw -Encoding UTF8 -LiteralPath $legacyQuickRefPath) `
+        -replace '(?m)^> outputLanguage: zh-CN\r?\n', '' `
+        -replace '(?m)^> maintenanceDue:.*\r?\n', ''
+    [System.IO.File]::WriteAllText($frontendProfilePath, $legacyProfile, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($legacyQuickRefPath, $legacyQuickRef, [System.Text.UTF8Encoding]::new($false))
+    & $installer -TargetRoot $frontend -Sync -Apply *> $null
+    $migratedProfile = Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendProfilePath
+    $migratedQuickRef = Get-Content -Raw -Encoding UTF8 -LiteralPath $legacyQuickRefPath
+    Assert-Test ($migratedProfile.Contains('scope: project-only')) 'Sync did not add project-only scope to a legacy profile'
+    Assert-Test ($migratedProfile.Contains('strategy: lazy')) 'Sync did not add maintenance defaults to a legacy profile'
+    Assert-Test ($migratedProfile.Contains('default: zh-CN')) 'Sync did not add language defaults to a legacy profile'
+    Assert-Test ($migratedProfile.Contains('name: frontend')) 'Compatibility migration changed project identity'
+    Assert-Test ($migratedQuickRef.Contains('outputLanguage: zh-CN')) 'Sync did not add the language marker to a legacy quick-ref'
+    Assert-Test ($migratedQuickRef -match 'maintenanceDue: \d{4}-\d{2}-\d{2}') 'Sync did not add a due date to a legacy quick-ref'
+    Assert-Test ((Get-Content -Encoding UTF8 -LiteralPath $legacyQuickRefPath).Count -le 40) 'Compatibility migration made quick-ref exceed 40 lines'
+    Assert-Test ((Get-Content -Raw -Encoding UTF8 -LiteralPath $frontendRulesPath) -eq 'project-owned-business-rules') 'Compatibility migration overwrote project business rules'
 
     Write-Host 'Installer integration tests passed.' -ForegroundColor Green
 }

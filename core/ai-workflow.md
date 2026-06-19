@@ -82,11 +82,11 @@ Skill B：开发实施      → 输出：规划调研 → 实施计划 → 小�
 
 ### 5.2 接手后第一步
 
-1. 读 `.ai-spec/AI-START.md`（规范位于项目根时读 `AI-START.md`）
-2. 读当前任务 Handoff
+1. 若 `.ai-spec/business/quick-ref.md` 为 `status: GENERATED`，只读它并按门禁加载；缺失、占位或本次为接入/完整审计时才读 `.ai-spec/AI-START.md`
+2. 读当前任务 Handoff 和 `docs/plans/current.md` 指向的阶段计划（存在时）
 3. `git status --short` + `git log --oneline -10`
-4. 读 Handoff 中列出的文件和契约
-5. 确认当前阶段目标，再继续
+4. 读 Handoff 中列出的文件、契约和适用规则
+5. 确认当前阶段目标与验收标准，再继续
 
 ---
 

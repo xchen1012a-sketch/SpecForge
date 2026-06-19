@@ -11,9 +11,9 @@ description: 在项目 AI 规范和已批准范围内实施新功能、缺陷修
 
 > 假定 AI-START.md §1.5-§1.6 启动协议已完成，项目阶段和业务逻辑已识别。
 > 上下文路由按 AI-START.md §6 执行，本 Skill 不建立第二套路由规则。
-> 每次实现/修改业务逻辑时，对照 `business/business-rules.md` 检查一致性（见 AI-START.md §1.6）。
+> 每次实现/修改业务逻辑时，先搜索并读取 `business/business-rules.md` 的相关章节检查一致性；跨域或无法可靠定位时才读全文。
 
-1. 读取 `AI-START.md`、已批准方案和适用规范；缺失时记录缺口。
+1. `business/quick-ref.md` 为 `GENERATED` 时按门禁读取最小上下文；缺失、占位或执行接入/完整审计时才读 `AI-START.md`。同时读取已批准方案、`docs/plans/current.md` 指向的阶段计划和适用规范；缺失时记录缺口。
 2. 只读调查真实代码、测试、配置、契约、数据、权限、Git 状态和相似实现。
 3. 识别 project-native 构建、分层、命名、错误处理、鉴权和测试方式。
 4. 区分 confirmed facts（已确认事实）、assumptions（假设）和 unresolved decisions（未决事项）。
@@ -30,6 +30,8 @@ description: 在项目 AI 规范和已批准范围内实施新功能、缺陷修
 | 完成前自检 | `references/review-checklist.md` |
 
 ## 计划
+
+开始实施前必须执行 `business/quick-ref.md` 的“计划自动触发门禁”；命中时读取 `workflows/project-planning.md` 并先持久化计划，已有 `docs/plans/current.md` 时恢复当前阶段。该判断无需用户额外提醒。
 
 简单、低风险且边界明确的改动可直接执行。复杂、跨边界、破坏性或高风险任务先列出：
 

@@ -37,6 +37,8 @@ $requiredFiles = @(
     'core/command-standard.md',
     'workflows/multi-project-onboard.md',
     'workflows/output-protocol.md',
+    'workflows/project-planning.md',
+    'workflows/context-maintenance.md',
     'workflows/new-project.md',
     'workflows/existing-project.md',
     'workflows/in-progress-project.md',
@@ -46,6 +48,8 @@ $requiredFiles = @(
     'governance/rfc-template.md',
     'governance/risk-register-template.md',
     'governance/handoff-template.md',
+    'governance/project-plan-template.md',
+    'governance/phase-plan-template.md',
     'governance/ownership-template.md',
     'skills/product-architect/SKILL.md',
     'skills/dev-implementation/SKILL.md',
@@ -54,6 +58,10 @@ $requiredFiles = @(
     'skills/spec-evaluator/SKILL.md',
     'scripts/install.sh',
     'scripts/install.ps1',
+    'scripts/update.ps1',
+    'scripts/update.cmd',
+    'scripts/maintain-context.ps1',
+    'scripts/audit-global-context.ps1',
     'scripts/validate.ps1'
 )
 
@@ -78,7 +86,7 @@ Assert-True ($start.Contains('existing-project')) 'AI-START.md does not route ex
 Assert-True ($start.Contains('in-progress-project')) 'AI-START.md does not route in-progress projects'
 Assert-True ($start.Contains('generic')) 'AI-START.md has no generic fallback'
 Assert-True ($start.Contains('上下文预算')) 'AI-START.md missing context budget protocol'
-Assert-True ($start.Contains('状态: GENERATED')) 'AI-START.md quick recovery does not require generated quick-ref status'
+Assert-True ($start.Contains('status: GENERATED')) 'AI-START.md quick recovery does not require generated quick-ref status'
 Assert-True ($start.Contains('上下文使用报告')) 'AI-START.md does not require context usage reporting'
 Assert-True ($start.Contains('受控例外')) 'AI-START.md does not define controlled exceptions'
 Assert-True ($start.Contains('初始基线 commit')) 'AI-START.md does not clarify the no-Git initial commit exception'
@@ -93,9 +101,17 @@ Assert-True ($start.Contains('先澄清假设')) 'AI-START.md missing clarify-as
 Assert-True ($start.Contains('简单优先')) 'AI-START.md missing simplicity-first coding discipline'
 Assert-True ($start.Contains('外科式改动')) 'AI-START.md missing surgical-change coding discipline'
 Assert-True ($start.Contains('目标驱动验证')) 'AI-START.md missing goal-driven verification discipline'
+Assert-True ($start.Contains('执行任何实施任务前')) 'AI-START.md missing mandatory pre-implementation planning gate'
+Assert-True ($start.Contains('无需用户额外提醒')) 'AI-START.md does not require automatic planning activation'
 Assert-True ($start.Contains('workflows/multi-project-onboard.md')) 'AI-START.md missing lazy multi-project workflow route'
 Assert-True ($start.Contains('workflows/output-protocol.md')) 'AI-START.md missing output protocol route'
 Assert-True ($start.Contains('workflows/session-coordination.md')) 'AI-START.md missing session coordination workflow route'
+Assert-True ($start.Contains('workflows/project-planning.md')) 'AI-START.md missing project planning workflow route'
+Assert-True ($start.Contains('workflows/context-maintenance.md')) 'AI-START.md missing lazy context maintenance route'
+Assert-True ($start.Contains('单次读取上限为 250 行')) 'AI-START.md missing large-file chunk read gate'
+Assert-True ($start.Contains('SpecForge 仅允许安装到项目目录')) 'AI-START.md missing project-only installation boundary'
+Assert-True ($start.Contains('项目存在 API/数据库不构成升级理由')) 'AI-START.md still escalates every backend task to L3'
+Assert-True ($start.Contains('公开 API 契约')) 'AI-START.md missing concrete API escalation trigger'
 Assert-True ($start.Contains('Skill 使用策略')) 'AI-START.md missing skill policy section'
 Assert-True ($start.Contains('project-first')) 'AI-START.md missing project-first skill mode'
 Assert-True ($start.Contains('local-first')) 'AI-START.md missing local-first skill mode'
@@ -108,12 +124,27 @@ foreach ($mode in @('L0 快速恢复', 'L1 机械改动', 'L2 标准改动', 'L3
 }
 
 $quickRef = Read-ProjectFile 'business/quick-ref.md'
-Assert-True ($quickRef.Contains('状态: TEMPLATE_PLACEHOLDER')) 'quick-ref.md missing placeholder status marker'
+$quickRefLines = @($quickRef.TrimEnd() -split "`r?`n")
+Assert-True ($quickRef.Contains('status: TEMPLATE_PLACEHOLDER')) 'quick-ref.md missing placeholder status marker'
 Assert-True ($quickRef.Contains('生成后改为 GENERATED')) 'quick-ref.md does not explain generated status transition'
 Assert-True ($quickRef.Contains('动态上下文门禁')) 'quick-ref.md missing dynamic context gate'
 Assert-True ($quickRef.Contains('日常启动唯一入口')) 'quick-ref.md is not documented as the daily startup entry'
 Assert-True ($quickRef.Contains('projectSize:')) 'quick-ref.md missing project size marker'
 Assert-True ($quickRef.Contains('sizeStrategy:')) 'quick-ref.md missing size-based loading strategy marker'
+Assert-True ($quickRef.Contains('计划自动触发门禁')) 'quick-ref.md missing automatic planning gate'
+Assert-True ($quickRef.Contains('workflows/project-planning.md')) 'quick-ref.md missing lazy planning workflow route'
+Assert-True ($quickRef.Contains('无需用户额外提醒')) 'quick-ref.md does not automatically activate planning'
+Assert-True ($quickRef.Contains('docs/plans/current.md')) 'quick-ref.md missing existing plan resume route'
+Assert-True ($quickRef.Contains('outputLanguage: zh-CN')) 'quick-ref.md missing the lightweight language lock'
+Assert-True ($quickRef.Contains('maintenanceDue:')) 'quick-ref.md missing lightweight maintenance due marker'
+Assert-True ($quickRef.Contains('250')) 'quick-ref.md missing large-file chunk budget'
+Assert-True ($quickRefLines.Count -le 40) "quick-ref.md exceeds the 40-line token budget: $($quickRefLines.Count) lines"
+Assert-True ($start.Contains('计划自动触发门禁不得删除')) 'AI-START.md does not preserve the planning gate when quick-ref is generated'
+Assert-True ($start.Contains('先搜索并只读取命中的相关章节')) 'AI-START.md does not route business rules at section level'
+Assert-True ($start.Contains('按需读取不等于跳过适用规则')) 'AI-START.md allows token saving to weaken quality gates'
+Assert-True ($start.Contains('默认输出语言强制为简体中文')) 'AI-START.md missing the Simplified Chinese output lock'
+Assert-True ($start.Contains('不得因代码、日志、依赖或文档为英文而切换')) 'AI-START.md allows silent language switching'
+Assert-True ($start.Contains('outputLanguage: zh-CN') -and $start.Contains('语言门禁不得删除')) 'AI-START.md does not preserve the language lock when regenerating quick-ref'
 
 foreach ($lite in @('core-lite/delivery-lite.md', 'core-lite/security-lite.md', 'core-lite/testing-lite.md')) {
     $liteContent = Read-ProjectFile $lite
@@ -132,10 +163,46 @@ Assert-True ($outputProtocol.Contains('L0')) 'output protocol missing level-base
 Assert-True ($outputProtocol.Contains('终端友好表格')) 'output protocol missing terminal-friendly table rules'
 Assert-True ($outputProtocol.Contains('表格最多 3 列')) 'output protocol missing max table column rule'
 Assert-True ($outputProtocol.Contains('风险清单优先用编号列表')) 'output protocol missing numbered risk list rule'
+Assert-True ($outputProtocol.Contains('默认使用简体中文')) 'output protocol missing Simplified Chinese default'
+Assert-True ($outputProtocol.Contains('实际修改公开契约')) 'output protocol still escalates based on project capabilities instead of task changes'
 
 $sessionWorkflow = Read-ProjectFile 'workflows/session-coordination.md'
 Assert-True ($sessionWorkflow.Contains('工具不会自动执行锁')) 'session workflow missing non-automatic-lock warning'
 Assert-True ($sessionWorkflow.Contains('workflows/session-coordination.md')) 'session workflow missing self route marker'
+
+$aiWorkflow = Read-ProjectFile 'core/ai-workflow.md'
+Assert-True ($aiWorkflow.Contains('business/quick-ref.md')) 'AI handoff workflow bypasses the lightweight daily entry'
+Assert-True ($aiWorkflow.Contains('status: GENERATED')) 'AI handoff workflow does not check quick-ref readiness'
+Assert-True ($aiWorkflow.Contains('AI-START.md')) 'AI handoff workflow missing onboarding/audit fallback'
+Assert-True ($aiWorkflow.Contains('docs/plans/current.md')) 'AI handoff workflow missing current plan recovery'
+
+$planningWorkflow = Read-ProjectFile 'workflows/project-planning.md'
+Assert-True ($planningWorkflow.Contains('docs/plans/project-plan.md')) 'planning workflow missing persistent project plan path'
+Assert-True ($planningWorkflow.Contains('docs/plans/current.md')) 'planning workflow missing lightweight current plan entry'
+Assert-True ($planningWorkflow.Contains('docs/plans/phases/')) 'planning workflow missing phase plan directory'
+Assert-True ($planningWorkflow.Contains('超过 200 行')) 'planning workflow missing long-plan split threshold'
+Assert-True ($planningWorkflow.Contains('3 个以上阶段')) 'planning workflow missing multi-phase split threshold'
+Assert-True ($planningWorkflow.Contains('用户确认执行')) 'planning workflow missing confirmation-to-persist transition'
+Assert-True ($planningWorkflow.Contains('只读取 `docs/plans/current.md`')) 'planning workflow does not protect daily token usage'
+Assert-True ($planningWorkflow.Contains('实施前自动判定')) 'planning workflow missing mandatory automatic trigger'
+Assert-True ($planningWorkflow.Contains('无需用户额外提醒')) 'planning workflow relies on the user to request planning'
+
+$maintenanceWorkflow = Read-ProjectFile 'workflows/context-maintenance.md'
+foreach ($rule in @('惰性触发', 'safe-only', '先检查行数、状态和修改时间', '禁止机械截断', 'active', 'blocked', '验收证据', '250 行', '可回滚')) {
+    Assert-True ($maintenanceWorkflow.Contains($rule)) "context maintenance workflow missing safety rule: $rule"
+}
+Assert-True ($maintenanceWorkflow.Contains('自动执行 dry-run')) 'context maintenance workflow does not auto-trigger its safe inspection'
+Assert-True ($maintenanceWorkflow.Contains('自动执行 `-Apply`')) 'safe-only maintenance is configured but never auto-applied'
+
+$projectPlanTemplate = Read-ProjectFile 'governance/project-plan-template.md'
+Assert-True ($projectPlanTemplate.Contains('项目总计划')) 'project plan template missing title'
+Assert-True ($projectPlanTemplate.Contains('阶段索引')) 'project plan template missing phase index'
+Assert-True ($projectPlanTemplate.Contains('总体验收标准')) 'project plan template missing overall acceptance criteria'
+
+$phasePlanTemplate = Read-ProjectFile 'governance/phase-plan-template.md'
+foreach ($section in @('阶段目标', '实施范围', '任务顺序', '验收标准', '验证命令', '风险与回滚', '完成状态')) {
+    Assert-True ($phasePlanTemplate.Contains($section)) "phase plan template missing section: $section"
+}
 
 $multiProjectWorkflow = Read-ProjectFile 'workflows/multi-project-onboard.md'
 Assert-True ($multiProjectWorkflow.Contains('同项目多副本')) 'multi-project workflow missing duplicate-copy guard'
@@ -155,6 +222,14 @@ Assert-True ($specExample.Contains('generated by installer')) 'ai-spec.example.y
 Assert-True ($specExample.Contains('quickRefStatus: TEMPLATE_PLACEHOLDER')) 'ai-spec.example.yaml missing quick-ref status default'
 Assert-True ($specExample.Contains('skillPolicy:')) 'ai-spec.example.yaml missing skill policy'
 Assert-True ($specExample.Contains('mode: project-first')) 'ai-spec.example.yaml missing default project-first skill policy'
+Assert-True ($specExample.Contains('outputLanguage:')) 'ai-spec.example.yaml missing output language policy'
+Assert-True ($specExample.Contains('default: zh-CN')) 'ai-spec.example.yaml does not default to Simplified Chinese'
+Assert-True ($specExample.Contains('locked: true')) 'ai-spec.example.yaml does not lock the default language'
+Assert-True ($specExample.Contains('maintenance:')) 'ai-spec.example.yaml missing context maintenance configuration'
+Assert-True ($specExample.Contains('strategy: lazy')) 'ai-spec.example.yaml does not use lazy maintenance'
+Assert-True ($specExample.Contains('autoApply: safe-only')) 'ai-spec.example.yaml maintenance is not stability-first'
+Assert-True ($specExample.Contains('singleReadMaxLines: 250')) 'ai-spec.example.yaml missing large-file read budget'
+Assert-True ($specExample.Contains('scope: project-only')) 'ai-spec.example.yaml missing project-only scope lock'
 
 $readme = Read-ProjectFile 'README.md'
 Assert-True ($readme.Contains('Windsurf/Cline/Aider/Gemini 通过 adapters/generic')) 'README missing generic adapter clarification'
@@ -162,11 +237,42 @@ Assert-True ($readme.Contains('before/after')) 'README missing before/after exam
 Assert-True ($readme.Contains('五个核心 Skill')) 'README missing five core skills note'
 Assert-True ($readme.Contains('安装器能力差异')) 'README missing installer capability matrix'
 Assert-True ($readme.Contains('PowerShell 7')) 'README missing macOS/Linux full installer guidance'
+Assert-True ($readme.Contains('切换 AI')) 'README missing AI switch guidance'
+Assert-True ($readme.Contains('不要重新安装、重新接入或全量扫描')) 'README does not prevent repeated onboarding after AI switch'
+Assert-True ($readme.Contains('docs/plans/current.md')) 'README AI switch prompt missing current phase plan'
+Assert-True ($readme.Contains('最新 Handoff')) 'README AI switch prompt missing handoff state'
+Assert-True ($readme.Contains('active session')) 'README AI switch prompt missing active session check'
+Assert-True ($readme.Contains('| 普通功能改动 | `quick-ref.md` + `core-lite/` + 相关源码 |')) 'README ordinary-task route loads project-map unnecessarily'
+Assert-True ($readme.Contains('首次接入提示词')) 'README missing first-use prompt'
+Assert-True ($readme.Contains('切换 AI 提示词')) 'README missing AI-switch prompt label'
+Assert-True ($readme.Contains('规范更新或重新拉取提示词')) 'README missing rule-refresh prompt'
+Assert-True ($readme.Contains('不是首次接入')) 'README rule-refresh prompt can trigger repeated onboarding'
+Assert-True ($readme.Contains('不要重新全量扫描项目')) 'README rule-refresh prompt does not prevent a full rescan'
+Assert-True ($readme.Contains('.ai-spec\scripts\update.ps1 -Apply')) 'README missing PowerShell update command'
+Assert-True ($readme.Contains('.ai-spec\scripts\update.cmd -Apply')) 'README missing CMD update command'
+Assert-True ($readme.Contains('maintain-context.ps1')) 'README missing context maintenance command'
+Assert-True ($readme.Contains('惰性维护')) 'README missing lazy maintenance explanation'
+Assert-True ($readme.Contains('只安装到当前项目')) 'README does not state the project-only boundary'
+Assert-True ($readme.Contains('不会写入 `~/.claude/rules/`')) 'README does not reject global rule installation'
 
 $adapterReadme = Read-ProjectFile 'adapters/README.md'
 Assert-True ($adapterReadme.Contains('project-first')) 'adapters README missing project-first skill policy'
 Assert-True ($adapterReadme.Contains('local-first')) 'adapters README missing local-first skill policy'
 Assert-True ($adapterReadme.Contains('hybrid')) 'adapters README missing hybrid skill policy'
+
+foreach ($adapterPath in @(
+    'adapters/claude-code/CLAUDE.md.template',
+    'adapters/codex/AGENTS.md.template',
+    'adapters/cursor/ai-spec.mdc.template',
+    'adapters/github-copilot/copilot-instructions.md.template',
+    'adapters/generic/START-PROMPT.md'
+)) {
+    $adapterContent = Read-ProjectFile $adapterPath
+    Assert-True ($adapterContent.Contains('business/quick-ref.md')) "$adapterPath missing lightweight daily entry"
+    Assert-True ($adapterContent.Contains('GENERATED')) "$adapterPath does not gate quick-ref readiness"
+    Assert-True ($adapterContent.Contains('AI-START.md')) "$adapterPath missing onboarding/audit fallback"
+    Assert-True ($adapterContent.Contains('简体中文') -or $adapterContent.Contains('Simplified Chinese')) "$adapterPath missing the Simplified Chinese output lock"
+}
 
 $installSh = Read-ProjectFile 'scripts/install.sh'
 Assert-True ($installSh.Contains('--onboard')) 'install.sh missing onboard option'
@@ -174,8 +280,42 @@ Assert-True ($installSh.Contains('--sync')) 'install.sh missing sync option'
 Assert-True ($installSh.Contains('intentionally lightweight')) 'install.sh missing lightweight scope warning'
 Assert-True ($installSh.Contains('Full onboarding/sync remains implemented in scripts/install.ps1')) 'install.sh missing full installer guidance'
 
+$updatePs1 = Read-ProjectFile 'scripts/update.ps1'
+Assert-True ($updatePs1.Contains('git') -and $updatePs1.Contains('clone') -and $updatePs1.Contains('SpecForge.git')) 'update.ps1 does not pull the latest SpecForge source'
+Assert-True ($updatePs1.Contains('Sync = $true')) 'update.ps1 does not use the safe sync path'
+Assert-True ($updatePs1.Contains('SourceRoot')) 'update.ps1 missing local source injection for deterministic testing/recovery'
+Assert-True ($updatePs1.Contains('finally')) 'update.ps1 does not guarantee temporary clone cleanup'
+Assert-True ($updatePs1.Contains('Apply')) 'update.ps1 missing explicit apply gate'
+
+$updateCmd = Read-ProjectFile 'scripts/update.cmd'
+Assert-True ($updateCmd.Contains('update.ps1')) 'update.cmd does not delegate to the PowerShell updater'
+Assert-True ($updateCmd.Contains('%*')) 'update.cmd does not forward update arguments'
+
+$installPs1 = Read-ProjectFile 'scripts/install.ps1'
+Assert-True ($installPs1.Contains("'scripts\update.ps1'")) 'install.ps1 sync does not refresh update.ps1'
+Assert-True ($installPs1.Contains("'scripts\update.cmd'")) 'install.ps1 sync does not refresh update.cmd'
+Assert-True ($installPs1.Contains("'scripts\maintain-context.ps1'")) 'install.ps1 sync does not refresh maintain-context.ps1'
+Assert-True ($installPs1.Contains("'scripts\audit-global-context.ps1'")) 'install.ps1 sync does not refresh audit-global-context.ps1'
+Assert-True ($installPs1.Contains('forbiddenGlobalRoots')) 'install.ps1 does not reject global AI configuration targets'
+
+$maintainContext = Read-ProjectFile 'scripts/maintain-context.ps1'
+Assert-True ($maintainContext.Contains('maintenanceDue')) 'maintain-context.ps1 does not use the lazy due marker'
+Assert-True ($maintainContext.Contains('[switch]$Apply')) 'maintain-context.ps1 missing dry-run/apply gate'
+Assert-True ($maintainContext.Contains('COMPACT_REQUIRED')) 'maintain-context.ps1 does not report oversized semantic files'
+Assert-True ($maintainContext.Contains('status: completed')) 'maintain-context.ps1 does not identify safe archive candidates'
+Assert-True ($maintainContext.Contains('archive')) 'maintain-context.ps1 does not archive completed runtime files'
+Assert-True (-not $maintainContext.Contains('business-rules.md -Force')) 'maintain-context.ps1 can destructively remove business rules'
+
+$globalAudit = Read-ProjectFile 'scripts/audit-global-context.ps1'
+Assert-True ($globalAudit.Contains('GLOBAL_CONTEXT_WARNING')) 'global context audit missing concise warning marker'
+Assert-True ($globalAudit.Contains('paths:')) 'global context audit does not distinguish path-scoped rules'
+Assert-True ($globalAudit.Contains('Immediate Agent Usage') -and $globalAudit.Contains('80%')) 'global context audit misses broad agent/coverage triggers'
+Assert-True (-not ($globalAudit -match '(?m)^\s*(Remove-Item|Move-Item|Set-Content)\b')) 'global context audit mutates user-level rules'
+
 $gitAttributes = Read-ProjectFile '.gitattributes'
 Assert-True ($gitAttributes.Contains('*.sh text eol=lf')) '.gitattributes does not force LF for shell scripts'
+Assert-True ($gitAttributes.Contains('*.cmd text eol=crlf')) '.gitattributes does not force CRLF for CMD scripts'
+Assert-True ($gitAttributes.Contains('*.ps1 text eol=crlf')) '.gitattributes does not force CRLF for PowerShell scripts'
 
 Assert-True ($start.Contains('AI 首次接入必须') -and $start.Contains('ai-spec.yaml')) 'AI-START.md does not allow AI to generate ai-spec.yaml on onboarding'
 Assert-True ($start.Contains('后续修改需用户明确授权')) 'AI-START.md missing explicit authorization rule for later ai-spec edits'
@@ -213,6 +353,35 @@ foreach ($skill in @('product-architect', 'dev-implementation', 'code-reviewer',
     Assert-True ($content -match "(?ms)^---\s*\nname:\s*$skill\s*\ndescription:") "$relativePath has invalid frontmatter"
     Assert-True (-not ($content -match '(?m)^trigger:')) "$relativePath uses non-standard trigger field"
 }
+
+$devImplementationSkill = Read-ProjectFile 'skills/dev-implementation/SKILL.md'
+Assert-True ($devImplementationSkill.Contains('workflows/project-planning.md')) 'dev implementation skill missing project planning workflow route'
+Assert-True ($devImplementationSkill.Contains('计划自动触发门禁')) 'dev implementation skill can bypass the automatic planning gate'
+Assert-True ($devImplementationSkill.Contains('business/quick-ref.md')) 'dev implementation skill forces the full startup document'
+Assert-True ($devImplementationSkill.Contains('docs/plans/current.md')) 'dev implementation skill does not follow the active development plan'
+Assert-True ($devImplementationSkill.Contains('相关章节')) 'dev implementation skill loads all business rules instead of relevant sections'
+
+$productArchitectSkill = Read-ProjectFile 'skills/product-architect/SKILL.md'
+Assert-True ($productArchitectSkill.Contains('business/quick-ref.md')) 'product architect skill forces the full startup document'
+Assert-True ($productArchitectSkill.Contains('GENERATED')) 'product architect skill does not use the lightweight readiness gate'
+
+foreach ($validatorRule in @('Missing spec.scope: project-only', 'Generated quick-ref still contains placeholder content', 'Generated business rules still contain placeholder content', 'Generated business rules lack source/reliability evidence markers', 'Generated project map still contains placeholder content', 'Missing ai.outputLanguage.default: zh-CN', 'Missing ai.outputLanguage.locked: true', 'Quick-ref exceeds 40 lines', 'Quick-ref status mismatch', 'planning auto-trigger gate', 'Stale AI adapter', 'Current plan exceeds 80 lines', 'Completed phase lacks acceptance evidence')) {
+    Assert-True ($validateScript.Contains($validatorRule)) "validate.ps1 missing runtime drift check: $validatorRule"
+}
+
+$claudeAdapter = Read-ProjectFile 'adapters/claude-code/CLAUDE.md.template'
+Assert-True (@($claudeAdapter.TrimEnd() -split "`r?`n").Count -le 15) 'Claude adapter is too large for an always-loaded project entry'
+Assert-True (-not $claudeAdapter.Contains('状态机图')) 'Claude adapter duplicates project-specific business knowledge'
+
+$securityStandard = Read-ProjectFile 'core/security-standard.md'
+Assert-True ($securityStandard.Contains('仅 Cookie/浏览器会话')) 'security standard applies CSRF controls to every API'
+Assert-True ($securityStandard.Contains('Bearer Token')) 'security standard does not distinguish token APIs from cookie sessions'
+Assert-True ($securityStandard.Contains('JSON Schema')) 'security standard missing AI structured-output boundary'
+Assert-True ($securityStandard.Contains('不可信用户输入')) 'security standard missing AI untrusted-input boundary'
+
+$aiLlmStack = Read-ProjectFile 'stacks/ai-llm-app.md'
+Assert-True ($aiLlmStack.Contains('JSON Schema')) 'AI/LLM stack missing structured output rule'
+Assert-True ($aiLlmStack.Contains('不可信')) 'AI/LLM stack missing untrusted-input rule'
 
 $settings = Read-ProjectFile 'adapters/claude-code/settings.json.template'
 foreach ($dangerousRule in @(

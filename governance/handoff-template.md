@@ -1,5 +1,6 @@
 # Handoff：任务名称
 
+- **status**：active | completed | abandoned
 - **目标**：
 - **项目/仓库**：
 - **当前分支与 commit**：
@@ -34,4 +35,3 @@
 ## 下一步
 
 按依赖顺序列出下一步，不包含密码、Token 或个人敏感数据。
-

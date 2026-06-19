@@ -17,7 +17,7 @@
 
 - 安装前检查目标文件是否存在；存在则语义合并，不覆盖。
 - 工具版本改变自动发现格式时，只更新适配器，不修改规范内核。
-- 未列出的工具直接读取 `AI-START.md`，不得因为没有专用适配器而拒绝接入。
+- 未列出的工具日常先读 `business/quick-ref.md`；状态不是 `GENERATED` 或执行接入/完整审计时才读 `AI-START.md`。不得因为没有专用适配器而拒绝接入。
 - Skills 的权威源是 `skills/<name>/SKILL.md`。按工具需要复制或链接到其项目级 Skill 目录。
 - Skill 策略由 `ai-spec.yaml` 的 `ai.skillPolicy.mode` 决定：`project-first` 默认项目 Skill 优先；`local-first` 用户本地 Skill 优先；`hybrid` 两者兼顾但冲突时项目规则胜出。
 - 用户可要求切换“本地优先”或“两者兼顾”，AI 应更新 `ai-spec.yaml`，并在输出中说明使用的 Skill 来源。
