@@ -98,6 +98,42 @@
 
 接入完成后由用户决定：合并分支、调整候选规则，或直接在分支上继续开发。
 
+## 1.6 项目逻辑的建立与维护
+
+"项目逻辑"分散在四个文件，各有职责：
+
+| 文件 | 谁写 | 内容 | 状态 |
+|---|---|---|---|
+| `ai-spec.yaml` | 用户 | 项目名 / 技术栈 / 命令 / 阶段 | 用户权威 |
+| `business/project-map.md` | AI 生成 | 一句话定位 + 核心域 + 入口 + 集成 + 风险 | AI 自动维护 |
+| `business/business-rules.md` | 用户确认 | 业务定位 / 域 / 状态机 / KPI 口径 / 不变量 | 用户权威 |
+| `business/business-rules.discovered.md` | AI 生成 | 候选规则，每条带来源和可靠度 | AI 草稿区 |
+
+### 老项目（existing / in-progress）
+
+接入时 AI 扫描代码、commit、ADR、文档，生成 `business-rules.discovered.md` 候选清单。**AI 不会自动把候选写成正式规则**，流程是：
+
+1. AI 扫描 → 输出候选（每条带来源、可靠度、冲突标记）
+2. 用户 review → 把确认无误的条目手动 promote 到 `business-rules.md` 对应章节
+3. 后续每次代码修改涉及业务逻辑时，AI 在交付报告里标注"新增 / 变更 / 冲突的候选规则"，并追加到 `business-rules.discovered.md`
+4. 用户定期清理 discovered：已 promote 的标 `archived`，已否决的标 `rejected`
+
+### 新项目（new）
+
+没有代码可扫，AI 不能"发现"业务规则，流程反过来：
+
+1. 用户口述或写一段业务说明给 AI
+2. AI 按 `business-rules.md` 章节结构起草（业务定位 / 域 / 状态机 / KPI / 不变量），未知项标"待用户确认"
+3. 用户确认后填入 `business-rules.md`
+4. **代码开始写之后**：AI 每次实现业务逻辑时，对照 `business-rules.md` 检查是否一致；不一致在交付报告里标"代码与业务规则冲突，请确认"，并写入 `business-rules.discovered.md`
+
+### 共同规则
+
+- `business-rules.md` 是业务事实的唯一权威；**AI 永不擅自修改**
+- `business-rules.discovered.md` 是 AI 工作区，可追加、标注、归档
+- 用户可随时让 AI 重新扫描项目刷新 `discovered`
+- 代码与 `business-rules.md` 冲突时，AI 默认假设规则正确、代码可能有 bug，但在交付报告里显式标注让用户裁决
+
 ## 2. 项目阶段识别（Project Stage Detection）
 
 按证据判断，不按用户措辞机械判断：
