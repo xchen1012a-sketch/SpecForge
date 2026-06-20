@@ -16,6 +16,9 @@ param(
 
     [switch]$ManageGit,
 
+    [ValidateSet('auto', 'parent', 'projects', 'none')]
+    [string]$GitScope = 'auto',
+
     [string]$BranchName = 'chore/specforge-onboard'
 )
 
@@ -150,6 +153,22 @@ function Detect-SubProjects {
     }
 
     return @($projects)
+}
+
+function Test-ParentGitScopeSignal {
+    param([string]$RootDir)
+
+    if (Test-Path -LiteralPath (Join-Path $RootDir '.git')) {
+        return $true
+    }
+
+    $parentSignals = @(
+        'package.json', 'pnpm-workspace.yaml', 'rush.json', 'lerna.json',
+        'nx.json', 'turbo.json', 'go.work', 'pom.xml', 'build.gradle',
+        'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts',
+        'Cargo.toml', 'Makefile', 'pyproject.toml'
+    )
+    return (Test-PathAny -RootDir $RootDir -RelativePaths $parentSignals)
 }
 
 function Detect-ProjectType {
@@ -378,6 +397,89 @@ function Add-AdapterEntrypoints {
             'generic' { }
         }
     }
+}
+
+function Add-ParentEntrypoints {
+    param([string]$RootDir)
+
+    $variables = @{
+        'PARENT_NAME' = (Split-Path -Leaf $RootDir)
+    }
+
+    foreach ($tool in ($Tools | Select-Object -Unique)) {
+        switch ($tool) {
+            'claude-code' {
+                Add-RenderedFile -Source (Join-Path $sourceRoot 'adapters\multi-project\CLAUDE.md.template') -Destination (Join-Path $RootDir 'CLAUDE.md') -Variables $variables
+            }
+            'codex' {
+                Add-RenderedFile -Source (Join-Path $sourceRoot 'adapters\multi-project\AGENTS.md.template') -Destination (Join-Path $RootDir 'AGENTS.md') -Variables $variables
+            }
+            'cursor' {
+                Add-RenderedFile -Source (Join-Path $sourceRoot 'adapters\multi-project\ai-spec.mdc.template') -Destination (Join-Path $RootDir '.cursor\rules\ai-spec.mdc') -Variables $variables
+            }
+            'github-copilot' {
+                Add-RenderedFile -Source (Join-Path $sourceRoot 'adapters\multi-project\copilot-instructions.md.template') -Destination (Join-Path $RootDir '.github\copilot-instructions.md') -Variables $variables
+            }
+            'generic' {
+                Add-RenderedFile -Source (Join-Path $sourceRoot 'adapters\multi-project\START-PROMPT.md.template') -Destination (Join-Path $RootDir 'START-PROMPT.md') -Variables $variables
+            }
+            default {
+                Add-RenderedFile -Source (Join-Path $sourceRoot 'adapters\multi-project\START-PROMPT.md.template') -Destination (Join-Path $RootDir 'START-PROMPT.md') -Variables $variables
+            }
+        }
+    }
+}
+
+function Get-ParentEntrypointPaths {
+    param([string]$RootDir)
+
+    $paths = [System.Collections.Generic.List[string]]::new()
+    foreach ($tool in ($Tools | Select-Object -Unique)) {
+        switch ($tool) {
+            'claude-code' { $paths.Add((Join-Path $RootDir 'CLAUDE.md')) }
+            'codex' { $paths.Add((Join-Path $RootDir 'AGENTS.md')) }
+            'cursor' { $paths.Add((Join-Path $RootDir '.cursor\rules\ai-spec.mdc')) }
+            'github-copilot' { $paths.Add((Join-Path $RootDir '.github\copilot-instructions.md')) }
+            'generic' { $paths.Add((Join-Path $RootDir 'START-PROMPT.md')) }
+            default { $paths.Add((Join-Path $RootDir 'START-PROMPT.md')) }
+        }
+    }
+    return @($paths | Select-Object -Unique)
+}
+
+function Test-ParentEntrypointsReady {
+    param([string]$RootDir)
+
+    if (-not (Test-Path -LiteralPath (Join-Path $RootDir '.specforge.json') -PathType Leaf)) {
+        return $false
+    }
+
+    foreach ($entryPath in Get-ParentEntrypointPaths -RootDir $RootDir) {
+        if (-not (Test-Path -LiteralPath $entryPath -PathType Leaf)) {
+            return $false
+        }
+        $content = Get-Content -Raw -Encoding UTF8 -LiteralPath $entryPath
+        if (-not ($content.Contains('.specforge.json') -and $content.Contains('.ai-spec/'))) {
+            return $false
+        }
+    }
+
+    return $true
+}
+
+function Test-ChildSpecsReady {
+    param([hashtable[]]$InstallTargets)
+
+    foreach ($target in $InstallTargets) {
+        $projectRoot = [string]$target.path
+        foreach ($relativePath in @('.ai-spec\AI-START.md', '.ai-spec\ai-spec.yaml', '.ai-spec\business\quick-ref.md')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $projectRoot $relativePath) -PathType Leaf)) {
+                return $false
+            }
+        }
+    }
+
+    return $true
 }
 
 function Copy-RuntimeSpec {
@@ -934,6 +1036,12 @@ function Invoke-SpecSlimming {
     Remove-SpecPath -SpecRoot $SpecRoot -RelativePath 'core\gotchas.md' -Reason 'no project-specific gotchas have been modeled yet'
 }
 
+function Test-ProjectPlanReady {
+    param([string]$ProjectRoot)
+
+    return (Test-Path -LiteralPath (Join-Path $ProjectRoot 'docs\plans\project-plan.md') -PathType Leaf)
+}
+
 function Install-SpecInstance {
     param(
         [string]$ProjectRoot,
@@ -951,7 +1059,12 @@ function Install-SpecInstance {
     if ($Onboard) {
         Write-QuickRefSkeleton -ProjectRoot $ProjectRoot -SpecRoot $specRoot -ProjectType $ProjectType -ProjectSize $inventory.projectSize -SizeStrategy $sizeStrategy
         Write-BusinessRulesSkeleton -ProjectRoot $ProjectRoot -SpecRoot $specRoot -ProjectType $ProjectType
-        Invoke-SpecSlimming -ProjectRoot $ProjectRoot -SpecRoot $specRoot -ProjectType $ProjectType
+        if ($Stage -eq 'new' -and -not (Test-ProjectPlanReady -ProjectRoot $ProjectRoot)) {
+            $script:actions.Add("SKIP_SLIM $specRoot (new project requires docs\plans\project-plan.md first)")
+        }
+        else {
+            Invoke-SpecSlimming -ProjectRoot $ProjectRoot -SpecRoot $specRoot -ProjectType $ProjectType
+        }
     }
 
     $script:installReports.Add(@{
@@ -997,9 +1110,41 @@ function Write-SpecForgeIndex {
     }
 }
 
+function Remove-ParentSpecInstance {
+    param(
+        [string]$RootDir,
+        [hashtable[]]$InstallTargets
+    )
+
+    $rootFull = [System.IO.Path]::GetFullPath($RootDir).TrimEnd('\', '/')
+    $parentSpecRoot = Join-Path $RootDir '.ai-spec'
+    $parentSpecFull = [System.IO.Path]::GetFullPath($parentSpecRoot)
+    $expectedSpecFull = [System.IO.Path]::GetFullPath((Join-Path $rootFull '.ai-spec'))
+
+    if (-not $parentSpecFull.Equals($expectedSpecFull, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to remove unexpected parent spec path: $parentSpecFull"
+    }
+
+    if (Test-Path -LiteralPath $parentSpecFull -PathType Container) {
+        if (-not (Test-ParentEntrypointsReady -RootDir $RootDir)) {
+            $script:actions.Add("KEEP_PARENT_SPEC $parentSpecFull (parent lightweight entries are not fully configured yet)")
+            return
+        }
+        if (-not (Test-ChildSpecsReady -InstallTargets $InstallTargets)) {
+            $script:actions.Add("KEEP_PARENT_SPEC $parentSpecFull (child .ai-spec instances are not fully configured yet)")
+            return
+        }
+
+        $script:actions.Add("REMOVE_PARENT_SPEC $parentSpecFull (child specs and parent lightweight entries are ready)")
+        if ($Apply) {
+            Remove-Item -LiteralPath $parentSpecFull -Recurse -Force
+        }
+    }
+}
+
 function Get-SyncRelativePaths {
     $relativePaths = [System.Collections.Generic.List[string]]::new()
-    foreach ($file in @('AI-START.md', 'README.md', 'scripts\validate.ps1', 'scripts\update.ps1', 'scripts\update.cmd', 'scripts\update.sh', 'scripts\maintain-context.ps1', 'scripts\maintain-context.sh', 'scripts\audit-global-context.ps1')) {
+    foreach ($file in @('AI-START.md', 'README.md', 'scripts\validate.ps1', 'scripts\git-preflight.ps1', 'scripts\update.ps1', 'scripts\update.cmd', 'scripts\update.sh', 'scripts\maintain-context.ps1', 'scripts\maintain-context.sh', 'scripts\audit-global-context.ps1')) {
         $relativePaths.Add($file)
     }
 
@@ -1156,6 +1301,7 @@ function Invoke-SpecSync {
     $indexPath = Join-Path $RootDir '.specforge.json'
     if (Test-Path -LiteralPath $indexPath -PathType Leaf) {
         Update-SpecForgeIndexVersion -IndexPath $indexPath
+        Add-ParentEntrypoints -RootDir $RootDir
         $index = Get-Content -Raw -Encoding UTF8 -LiteralPath $indexPath | ConvertFrom-Json
         foreach ($project in @($index.projects)) {
             $projectRoot = Join-Path $RootDir ([string]$project.path)
@@ -1198,6 +1344,32 @@ function Invoke-GitOnboarding {
     }
 }
 
+function Get-GitOnboardingRoots {
+    param(
+        [string]$RootDir,
+        [hashtable[]]$InstallTargets,
+        [hashtable[]]$SubProjects
+    )
+
+    if (-not $ManageGit -or $GitScope -eq 'none') {
+        return @()
+    }
+
+    if ($GitScope -eq 'parent') {
+        return @($RootDir)
+    }
+
+    if ($GitScope -eq 'projects') {
+        return @($InstallTargets | ForEach-Object { [string]$_.path } | Select-Object -Unique)
+    }
+
+    if ($SubProjects.Count -ge 2 -and (Test-ParentGitScopeSignal -RootDir $RootDir)) {
+        return @($RootDir)
+    }
+
+    return @($InstallTargets | ForEach-Object { [string]$_.path } | Select-Object -Unique)
+}
+
 if ($Sync) {
     Invoke-SpecSync -RootDir $targetFullPath
     Write-Host "AI Spec sync plan" -ForegroundColor Cyan
@@ -1212,13 +1384,10 @@ if ($Sync) {
     exit 0
 }
 
-if ($Onboard -and $ManageGit) {
-    Invoke-GitOnboarding -RepositoryRoot $targetFullPath
-}
-
 $subProjects = if ($Onboard) { @(Detect-SubProjects -RootDir $targetFullPath) } else { @() }
 $installTargets = [System.Collections.Generic.List[hashtable]]::new()
 $multiProjectId = $null
+$indexProjects = $null
 
 if ($Onboard -and $subProjects.Count -ge 2) {
     $multiProjectId = [guid]::NewGuid().ToString()
@@ -1233,7 +1402,7 @@ if ($Onboard -and $subProjects.Count -ge 2) {
             multiProjectId = $multiProjectId
         })
     }
-    Write-SpecForgeIndex -RootDir $targetFullPath -MultiProjectId $multiProjectId -Projects $subProjects
+    $indexProjects = $subProjects
 }
 elseif ($Onboard -and $subProjects.Count -eq 1 -and $Mode -eq 'auto') {
     $project = $subProjects[0]
@@ -1256,8 +1425,23 @@ else {
     })
 }
 
+if ($Onboard -and $ManageGit) {
+    foreach ($repositoryRoot in Get-GitOnboardingRoots -RootDir $targetFullPath -InstallTargets @($installTargets.ToArray()) -SubProjects @($subProjects)) {
+        Invoke-GitOnboarding -RepositoryRoot $repositoryRoot
+    }
+}
+
+if ($null -ne $indexProjects) {
+    Write-SpecForgeIndex -RootDir $targetFullPath -MultiProjectId $multiProjectId -Projects $indexProjects
+    Add-ParentEntrypoints -RootDir $targetFullPath
+}
+
 foreach ($target in $installTargets) {
     Install-SpecInstance -ProjectRoot $target.path -Stage $target.stage -ProjectType $target.type -MultiProjectId $target.multiProjectId
+}
+
+if ($null -ne $indexProjects) {
+    Remove-ParentSpecInstance -RootDir $targetFullPath -InstallTargets @($installTargets.ToArray())
 }
 
 Write-Host "AI Spec installation plan" -ForegroundColor Cyan
@@ -1265,6 +1449,7 @@ Write-Host "Target: $targetFullPath"
 Write-Host "Mode: $Mode"
 Write-Host "Onboard: $([bool]$Onboard)"
 Write-Host "ManageGit: $([bool]$ManageGit)"
+Write-Host "GitScope: $GitScope"
 Write-Host "Tools: $($Tools -join ', ')"
 Write-Host "Apply: $([bool]$Apply)"
 Write-Host "Instances: $($installReports.Count)"

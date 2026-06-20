@@ -13,6 +13,20 @@
 | GitHub Copilot | `github-copilot/copilot-instructions.md.template` | `.github/copilot-instructions.md` |
 | 其它工具 | `generic/START-PROMPT.md` | 直接作为启动提示词 |
 
+## 多项目父目录入口
+
+多子仓接入时，父目录只保留轻量入口和 `.specforge.json`，完整规范落在各子项目 `.ai-spec/`：
+
+| 工具 | 父目录入口 | 行为 |
+|---|---|---|
+| Claude Code | `CLAUDE.md` | 读取 `.specforge.json`，路由到子项目 `.ai-spec/` |
+| Codex | `AGENTS.md` | 读取 `.specforge.json`，路由到子项目 `.ai-spec/` |
+| Cursor | `.cursor/rules/ai-spec.mdc` | 读取 `.specforge.json`，路由到子项目 `.ai-spec/` |
+| GitHub Copilot | `.github/copilot-instructions.md` | 读取 `.specforge.json`，路由到子项目 `.ai-spec/` |
+| 其它工具 | `START-PROMPT.md` | 手动提示词，路由到子项目 `.ai-spec/` |
+
+父目录 `.ai-spec/` 只允许作为安装/迁移期间的临时规则来源；必须等 `.specforge.json`、父级轻量入口和全部子项目 `.ai-spec/` 都配置好后再删除。若入口冲突或生成失败，保留父目录 `.ai-spec/` 并报告需要人工合并。
+
 ## 兼容规则
 
 - 安装前检查目标文件是否存在；存在则语义合并，不覆盖。

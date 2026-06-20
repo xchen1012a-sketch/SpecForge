@@ -23,7 +23,7 @@
 
 1. 每个真实子项目各安装一份 `.ai-spec/`。
 2. 所有实例共享一个 `multiProjectId`，写入各自 `ai-spec.yaml`。
-3. 父目录只创建 `.specforge.json` 轻量索引：
+3. 父目录只创建 `.specforge.json` 轻量索引，以及所选 AI 工具的轻量入口（如 `CLAUDE.md`、`AGENTS.md`、`.cursor/rules/ai-spec.mdc`、`.github/copilot-instructions.md`、`START-PROMPT.md`）。父入口只读取 `.specforge.json` 并路由到子项目 `.ai-spec/`，不复制规范正文：
 
 ```json
 {
@@ -40,6 +40,16 @@
   ]
 }
 ```
+
+若父目录存在误装或临时使用的 `.ai-spec/`，必须等 `.specforge.json`、父级轻量入口和全部子项目 `.ai-spec/` 都配置成功后再删除父目录 `.ai-spec/`。如果父入口冲突、缺失或生成失败，先保留父目录 `.ai-spec/` 并报告需要人工合并；每个真实子项目保留自己的完整 `.ai-spec/`。
+
+## 2.1 Git 归属
+
+多项目接入时，父目录默认不生成 Git 仓库。`-ManageGit` 的自动策略应先完成子项目识别，再按以下规则决定：
+
+- 父目录已有 `.git`，或存在 monorepo / 聚合工程信号（如 `pnpm-workspace.yaml`、`go.work`、根 `package.json`、根 `pom.xml` 等）时，在父目录管理 Git。
+- 父目录只是多个独立项目的容器时，在各子项目目录分别管理 Git。
+- 只有用户显式指定父级策略时，才允许在普通父目录创建 Git；只有用户显式指定项目策略时，才允许在已有父级 Git 的目录内创建子仓。
 
 ## 3. 一致文件与差异文件
 

@@ -79,6 +79,19 @@ try {
     Assert-Test ($gitPlanText.Contains('GIT init/add/initial-commit')) 'ManageGit dry-run did not plan the controlled initial commit'
     Assert-Test ($gitPlanText.Contains('GIT create branch chore/specforge-onboard')) 'ManageGit dry-run did not plan onboarding branch creation'
 
+    $newRoot = Join-Path $tempRoot 'new-project'
+    New-Item -ItemType Directory -Force -Path $newRoot | Out-Null
+    & $installer -TargetRoot $newRoot -Mode new -Tools 'generic' -Onboard -Apply *> $null
+    Assert-Test (Test-Path -LiteralPath (Join-Path $newRoot '.ai-spec\tests')) 'New project without project-plan should keep full rules before slimming'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $newRoot '.ai-spec\scripts\install.ps1')) 'New project without project-plan should keep the installer before slimming'
+
+    $plannedNewRoot = Join-Path $tempRoot 'planned-new-project'
+    New-Item -ItemType Directory -Force -Path (Join-Path $plannedNewRoot 'docs\plans') | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $plannedNewRoot 'docs\plans\project-plan.md'), "# Project plan`n", [System.Text.UTF8Encoding]::new($false))
+    & $installer -TargetRoot $plannedNewRoot -Mode new -Tools 'generic' -Onboard -Apply *> $null
+    Assert-Test (-not (Test-Path -LiteralPath (Join-Path $plannedNewRoot '.ai-spec\tests'))) 'New project with project-plan should slim template self-tests'
+    Assert-Test (-not (Test-Path -LiteralPath (Join-Path $plannedNewRoot '.ai-spec\scripts\install.ps1'))) 'New project with project-plan should slim the one-time installer'
+
     $monoRoot = Join-Path $tempRoot 'multi-project'
     $frontend = Join-Path $monoRoot 'frontend'
     $backend = Join-Path $monoRoot 'backend'
@@ -87,10 +100,33 @@ try {
     [System.IO.File]::WriteAllText((Join-Path $frontend 'package.json'), '{"scripts":{"build":"vite build","test":"vitest run","dev":"vite"},"dependencies":{"react":"latest","vite":"latest"}}', [System.Text.UTF8Encoding]::new($false))
     [System.IO.File]::WriteAllText((Join-Path $backend 'go.mod'), "module example.com/backend`n", [System.Text.UTF8Encoding]::new($false))
 
-    & $installer -TargetRoot $monoRoot -Mode auto -Tools 'codex' -Onboard -Apply *> $null
+    $multiGitPlan = & $installer -TargetRoot $monoRoot -Mode auto -Tools 'codex' -Onboard -ManageGit 6>&1
+    $multiGitPlanText = [string]::Join("`n", @($multiGitPlan))
+    Assert-Test ($multiGitPlanText.Contains("GIT init/add/initial-commit $frontend (controlled")) 'ManageGit auto should plan frontend Git onboarding inside the child project'
+    Assert-Test ($multiGitPlanText.Contains("GIT init/add/initial-commit $backend (controlled")) 'ManageGit auto should plan backend Git onboarding inside the child project'
+    Assert-Test (-not $multiGitPlanText.Contains("GIT init/add/initial-commit $monoRoot (controlled")) 'ManageGit auto should not initialize Git at a plain multi-project parent'
+
+    $parentGitPlan = & $installer -TargetRoot $monoRoot -Mode auto -Tools 'codex' -Onboard -ManageGit -GitScope parent 6>&1
+    $parentGitPlanText = [string]::Join("`n", @($parentGitPlan))
+    Assert-Test ($parentGitPlanText.Contains("GIT init/add/initial-commit $monoRoot (controlled")) 'ManageGit -GitScope parent should explicitly plan Git onboarding at the parent'
+
+    New-Item -ItemType Directory -Force -Path (Join-Path $monoRoot '.ai-spec') | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $monoRoot '.ai-spec\legacy-parent-rule.txt'), 'legacy parent spec', [System.Text.UTF8Encoding]::new($false))
+
+    & $installer -TargetRoot $monoRoot -Mode auto -Tools 'claude-code,codex,cursor,github-copilot,generic' -Onboard -Apply *> $null
 
     Assert-Test (-not (Test-Path -LiteralPath (Join-Path $monoRoot '.ai-spec'))) 'Onboard mode installed a parent .ai-spec for a multi-project root'
     Assert-Test (Test-Path -LiteralPath (Join-Path $monoRoot '.specforge.json')) 'Onboard mode did not create parent .specforge.json'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $monoRoot 'AGENTS.md')) 'Onboard mode did not create parent lightweight Codex entry'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $monoRoot 'CLAUDE.md')) 'Onboard mode did not create parent lightweight Claude entry'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $monoRoot '.cursor\rules\ai-spec.mdc')) 'Onboard mode did not create parent lightweight Cursor entry'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $monoRoot '.github\copilot-instructions.md')) 'Onboard mode did not create parent lightweight Copilot entry'
+    Assert-Test (Test-Path -LiteralPath (Join-Path $monoRoot 'START-PROMPT.md')) 'Onboard mode did not create parent generic start prompt'
+    $parentAgents = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $monoRoot 'AGENTS.md')
+    Assert-Test ($parentAgents.Contains('.specforge.json')) 'Parent lightweight entry does not point to the multi-project index'
+    Assert-Test ($parentAgents.Contains('child project')) 'Parent lightweight entry does not route to child projects'
+    Assert-Test (-not (Test-Path -LiteralPath (Join-Path $monoRoot '.agents'))) 'Parent lightweight entry should not install parent Codex skills'
+    Assert-Test (-not (Test-Path -LiteralPath (Join-Path $monoRoot '.claude\skills'))) 'Parent lightweight entry should not install parent Claude skills'
     Assert-Test (Test-Path -LiteralPath (Join-Path $frontend '.ai-spec\AI-START.md')) 'Onboard mode did not install frontend .ai-spec'
     Assert-Test (Test-Path -LiteralPath (Join-Path $backend '.ai-spec\AI-START.md')) 'Onboard mode did not install backend .ai-spec'
     Assert-Test (Test-Path -LiteralPath (Join-Path $frontend 'AGENTS.md')) 'Onboard mode did not create frontend Codex entry'

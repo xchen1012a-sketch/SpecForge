@@ -30,6 +30,11 @@ $requiredFiles = @(
     'adapters/cursor/ai-spec.mdc.template',
     'adapters/github-copilot/copilot-instructions.md.template',
     'adapters/generic/START-PROMPT.md',
+    'adapters/multi-project/AGENTS.md.template',
+    'adapters/multi-project/CLAUDE.md.template',
+    'adapters/multi-project/START-PROMPT.md.template',
+    'adapters/multi-project/ai-spec.mdc.template',
+    'adapters/multi-project/copilot-instructions.md.template',
     'business/quick-ref.md',
     'core-lite/delivery-lite.md',
     'core-lite/security-lite.md',
@@ -64,6 +69,7 @@ $requiredFiles = @(
     'scripts/maintain-context.ps1',
     'scripts/maintain-context.sh',
     'scripts/audit-global-context.ps1',
+    'scripts/git-preflight.ps1',
     'scripts/validate.ps1'
 )
 
@@ -99,6 +105,7 @@ Assert-True ($start.Contains('tiny | small | medium | large | enterprise')) 'AI-
 Assert-True ($start.Contains('Git 提交硬性门禁')) 'AI-START.md missing hard git commit gate'
 Assert-True ($start.Contains('只提交纯代码')) 'AI-START.md missing pure-code commit rule'
 Assert-True ($start.Contains('暂存区必须检查')) 'AI-START.md missing staging-area check rule'
+Assert-True ($start.Contains('git-preflight.ps1')) 'AI-START.md missing git preflight scan rule'
 Assert-True ($start.Contains('先澄清假设')) 'AI-START.md missing clarify-assumptions coding discipline'
 Assert-True ($start.Contains('简单优先')) 'AI-START.md missing simplicity-first coding discipline'
 Assert-True ($start.Contains('外科式改动')) 'AI-START.md missing surgical-change coding discipline'
@@ -219,6 +226,11 @@ Assert-True ($multiProjectWorkflow.Contains('禁止同步覆盖')) 'multi-projec
 
 $validateScript = Read-ProjectFile 'scripts/validate.ps1'
 Assert-True ($validateScript.Contains('Conflict summary')) 'validate.ps1 missing conflict summary output'
+Assert-True ($validateScript.Contains('SpecForge doctor')) 'validate.ps1 missing doctor summary'
+Assert-True ($validateScript.Contains('[switch]$SelfTest')) 'validate.ps1 missing explicit full self-test gate'
+Assert-True ($validateScript.Contains('.specforge.json')) 'validate.ps1 missing multi-project parent checks'
+Assert-True ($validateScript.Contains('status --porcelain')) 'validate.ps1 missing git status doctor check'
+Assert-True ($validateScript.Contains('templateVersion')) 'validate.ps1 missing template version doctor check'
 
 $specExample = Read-ProjectFile 'ai-spec.example.yaml'
 Assert-True ($specExample.Contains('context:')) 'ai-spec.example.yaml missing context configuration'
@@ -239,35 +251,36 @@ Assert-True ($specExample.Contains('singleReadMaxLines: 250')) 'ai-spec.example.
 Assert-True ($specExample.Contains('scope: project-only')) 'ai-spec.example.yaml missing project-only scope lock'
 
 $readme = Read-ProjectFile 'README.md'
-Assert-True ($readme.Contains('Windsurf/Cline/Aider/Gemini 通过 adapters/generic')) 'README missing generic adapter clarification'
-Assert-True ($readme.Contains('before/after')) 'README missing before/after example'
-Assert-True ($readme.Contains('五个核心 Skill')) 'README missing five core skills note'
+Assert-True ($readme.Contains('轻量入口、省 token、保质量')) 'README missing the lightweight/token/quality core'
 Assert-True (-not $readme.Contains('安装器能力差异')) 'README should not expose installer capability matrix'
 Assert-True (-not $readme.Contains('scripts\install.ps1')) 'README should not expose install.ps1 as the user entry'
+Assert-True ($readme.Contains('## 项目亮点')) 'README missing project highlights section'
+Assert-True ($readme.Contains('## 使用逻辑')) 'README missing usage flow section'
+Assert-True ($readme.Contains('完整规范落到子仓 `.ai-spec/`')) 'README missing child-repo spec placement summary'
+Assert-True ($readme.Contains('从父目录一键同步到子仓')) 'README missing parent-to-child update flow'
 Assert-True ($readme.Contains('快速安装')) 'README missing quick install section'
-Assert-True ($readme.Contains('不需要手动跑额外脚本')) 'README missing no-extra-script guidance after quick install'
-Assert-True ($readme.Contains('能力边界')) 'README missing capability boundary section'
-Assert-True ($readme.Contains('仍需要人工 review')) 'README overstates AI behavior guarantees'
-Assert-True ($readme.Contains('只有用户明确要求时')) 'README missing explicit language override rule'
+Assert-True ($readme.Contains('Claude Code、Codex、Cursor、Copilot')) 'README missing mainstream AI editor scope'
 Assert-True ($readme.Contains('切换 AI')) 'README missing AI switch guidance'
 Assert-True ($readme.Contains('不要重新安装、重新接入或全量扫描')) 'README does not prevent repeated onboarding after AI switch'
 Assert-True ($readme.Contains('docs/plans/current.md')) 'README AI switch prompt missing current phase plan'
 Assert-True ($readme.Contains('最新 Handoff')) 'README AI switch prompt missing handoff state'
 Assert-True ($readme.Contains('active session')) 'README AI switch prompt missing active session check'
-Assert-True ($readme.Contains('| 普通功能改动 | `quick-ref.md` + `core-lite/` + 相关源码 |')) 'README ordinary-task route loads project-map unnecessarily'
-Assert-True ($readme.Contains('首次接入提示词')) 'README missing first-use prompt'
-Assert-True ($readme.Contains('切换 AI 提示词')) 'README missing AI-switch prompt label'
-Assert-True ($readme.Contains('规范更新或重新拉取提示词')) 'README missing rule-refresh prompt'
+Assert-True ($readme.Contains('首次接入')) 'README missing first-use prompt'
+Assert-True ($readme.Contains('更新规范')) 'README missing rule-refresh section'
 Assert-True ($readme.Contains('不是首次接入')) 'README rule-refresh prompt can trigger repeated onboarding'
 Assert-True ($readme.Contains('不要重新全量扫描项目')) 'README rule-refresh prompt does not prevent a full rescan'
+Assert-True ($readme.Contains('只更新当前子仓')) 'README missing child-repo update shortcut'
+Assert-True ($readme.Contains('.ai-spec\scripts\update.cmd -TargetRoot . -Apply')) 'README missing CMD parent update command'
 Assert-True ($readme.Contains('.ai-spec\scripts\update.ps1 -Apply')) 'README missing PowerShell update command'
 Assert-True ($readme.Contains('.ai-spec\scripts\update.cmd -Apply')) 'README missing CMD update command'
 Assert-True ($readme.Contains('.ai-spec/scripts/update.sh --apply')) 'README missing Bash update command'
-Assert-True ($readme.Contains('maintain-context.ps1')) 'README missing context maintenance command'
-Assert-True ($readme.Contains('.ai-spec/scripts/maintain-context.sh --apply')) 'README missing Bash context maintenance command'
-Assert-True ($readme.Contains('惰性维护')) 'README missing lazy maintenance explanation'
+Assert-True ($readme.Contains('检查远端更新')) 'README missing remote update check section'
+Assert-True ($readme.Contains('.ai-spec\scripts\update.ps1 -TargetRoot .')) 'README missing PowerShell remote dry-run check'
+Assert-True ($readme.Contains('.ai-spec\scripts\update.cmd -TargetRoot .')) 'README missing CMD remote dry-run check'
+Assert-True ($readme.Contains('.ai-spec/scripts/update.sh --target .')) 'README missing Bash remote dry-run check'
+Assert-True (-not $readme.Contains('## 一键检查')) 'README should keep validate out of the lightweight entry'
 Assert-True ($readme.Contains('只安装到当前项目')) 'README does not state the project-only boundary'
-Assert-True ($readme.Contains('不会写入 `~/.claude/rules/`')) 'README does not reject global rule installation'
+Assert-True ($readme.Contains('不写入 `~/.claude/rules/`')) 'README does not reject global rule installation'
 
 $adapterReadme = Read-ProjectFile 'adapters/README.md'
 Assert-True ($adapterReadme.Contains('project-first')) 'adapters README missing project-first skill policy'
@@ -298,6 +311,7 @@ $updatePs1 = Read-ProjectFile 'scripts/update.ps1'
 Assert-True ($updatePs1.Contains('git') -and $updatePs1.Contains('clone') -and $updatePs1.Contains('SpecForge.git')) 'update.ps1 does not pull the latest SpecForge source'
 Assert-True ($updatePs1.Contains('Sync = $true')) 'update.ps1 does not use the safe sync path'
 Assert-True ($updatePs1.Contains('SourceRoot')) 'update.ps1 missing local source injection for deterministic testing/recovery'
+Assert-True ($updatePs1.Contains('claude-code') -and $updatePs1.Contains('github-copilot') -and $updatePs1.Contains('Tools = $Tools')) 'update.ps1 does not pass mainstream AI editor adapters into sync'
 Assert-True ($updatePs1.Contains('finally')) 'update.ps1 does not guarantee temporary clone cleanup'
 Assert-True ($updatePs1.Contains('Apply')) 'update.ps1 missing explicit apply gate'
 
@@ -318,7 +332,30 @@ Assert-True ($installPs1.Contains("'scripts\update.sh'")) 'install.ps1 sync does
 Assert-True ($installPs1.Contains("'scripts\maintain-context.ps1'")) 'install.ps1 sync does not refresh maintain-context.ps1'
 Assert-True ($installPs1.Contains("'scripts\maintain-context.sh'")) 'install.ps1 sync does not refresh maintain-context.sh'
 Assert-True ($installPs1.Contains("'scripts\audit-global-context.ps1'")) 'install.ps1 sync does not refresh audit-global-context.ps1'
+Assert-True ($installPs1.Contains('Add-ParentEntrypoints -RootDir $RootDir')) 'install.ps1 sync does not refresh missing parent lightweight entries'
 Assert-True ($installPs1.Contains('forbiddenGlobalRoots')) 'install.ps1 does not reject global AI configuration targets'
+
+$newProjectSmokeRoot = [System.IO.Path]::GetFullPath((Join-Path ([System.IO.Path]::GetTempPath()) ('specforge-new-project-smoke-' + [guid]::NewGuid().ToString('N'))))
+try {
+    $emptyProjectRoot = Join-Path $newProjectSmokeRoot 'empty'
+    New-Item -ItemType Directory -Force -Path $emptyProjectRoot | Out-Null
+    & (Join-Path $root 'scripts\install.ps1') -TargetRoot $emptyProjectRoot -Mode new -Tools 'generic' -Onboard -Apply *> $null
+    Assert-True (Test-Path -LiteralPath (Join-Path $emptyProjectRoot '.ai-spec\tests') -PathType Container) 'Empty new project slimmed rules before project-plan.md exists'
+    Assert-True (Test-Path -LiteralPath (Join-Path $emptyProjectRoot '.ai-spec\scripts\install.ps1') -PathType Leaf) 'Empty new project removed installer before project-plan.md exists'
+
+    $plannedProjectRoot = Join-Path $newProjectSmokeRoot 'planned'
+    New-Item -ItemType Directory -Force -Path (Join-Path $plannedProjectRoot 'docs\plans') | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $plannedProjectRoot 'docs\plans\project-plan.md'), "# Project plan`n", [System.Text.UTF8Encoding]::new($false))
+    & (Join-Path $root 'scripts\install.ps1') -TargetRoot $plannedProjectRoot -Mode new -Tools 'generic' -Onboard -Apply *> $null
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $plannedProjectRoot '.ai-spec\tests') -PathType Container)) 'Planned new project did not slim template self-tests'
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $plannedProjectRoot '.ai-spec\scripts\install.ps1') -PathType Leaf)) 'Planned new project did not slim one-time installer'
+}
+finally {
+    if ($newProjectSmokeRoot.StartsWith([System.IO.Path]::GetTempPath(), [System.StringComparison]::OrdinalIgnoreCase) -and
+        (Test-Path -LiteralPath $newProjectSmokeRoot)) {
+        Remove-Item -LiteralPath $newProjectSmokeRoot -Recurse -Force
+    }
+}
 
 $maintainContext = Read-ProjectFile 'scripts/maintain-context.ps1'
 Assert-True ($maintainContext.Contains('maintenanceDue')) 'maintain-context.ps1 does not use the lazy due marker'
@@ -375,6 +412,13 @@ Assert-True ($securityStandard.Contains('只提交纯代码')) 'security standar
 Assert-True ($securityStandard.Contains('.env')) 'security standard missing env-file filter'
 Assert-True ($securityStandard.Contains('IDE 配置')) 'security standard missing IDE config filter'
 Assert-True ($securityStandard.Contains('构建产物')) 'security standard missing build artifact filter'
+Assert-True ($securityStandard.Contains('提交前扫描')) 'security standard missing pre-commit scan rule'
+
+$gitPreflight = Read-ProjectFile 'scripts/git-preflight.ps1'
+Assert-True ($gitPreflight.Contains('Git preflight scan')) 'git-preflight.ps1 missing scan banner'
+Assert-True ($gitPreflight.Contains('.env')) 'git-preflight.ps1 missing env path block'
+Assert-True ($gitPreflight.Contains('PRIVATE KEY')) 'git-preflight.ps1 missing private key scan'
+Assert-True ($gitPreflight.Contains('.specforge.json')) 'git-preflight.ps1 missing parent SpecForge index gate'
 
 foreach ($skill in @('product-architect', 'dev-implementation', 'code-reviewer', 'debugger', 'spec-evaluator')) {
     $relativePath = "skills/$skill/SKILL.md"

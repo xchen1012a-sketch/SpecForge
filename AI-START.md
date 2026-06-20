@@ -51,36 +51,57 @@
 
 ### 项目结构检测（在任何步骤前执行）
 
-AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多项目：
+AI 首先扫描 `PROJECT_ROOT` 自身和直接子目录，判断是单项目、多项目还是空项目 Bootstrap：
 
 **检测规则**：对每个直接子目录（排除 `.git/`、`node_modules/`、`vendor/` 及隐藏目录）：
 - 若包含构建文件（`package.json`、`pom.xml`、`go.mod`、`Cargo.toml`、`requirements.txt`、`pyproject.toml`、`Makefile`、`build.gradle`、`build.gradle.kts`、`composer.json`、`mix.exs`、`CMakeLists.txt`、`BUILD`、`WORKSPACE`）或源码目录（`src/`、`app/`、`lib/`），判定为**项目目录**。
 - 目录名称（如 `docs`、`data`、`sql`、`assets`）不构成排除理由 — 只要包含构建文件或源码目录，即为项目目录。
+- 若 `PROJECT_ROOT` 自身包含上述构建文件、源码目录或 monorepo/聚合工程信号（如 `pnpm-workspace.yaml`、`go.work`、`settings.gradle`、根 `pom.xml`），优先将 `PROJECT_ROOT` 判定为项目根或聚合工程根。
+- 若 `PROJECT_ROOT` 自身和直接子目录均无项目证据，只能判定为**空项目/父级引导目录**；不得凭目录名直接创建业务项目规则。
 
 **路由结果**：
 
-| 检测到的项目目录数 | 模式 | 安装目标 |
+| 检测结果 | 模式 | 安装目标 |
 |---|---|---|
-| 0 个 | 单项目 | `PROJECT_ROOT`（当前目录，行为不变） |
-| 1 个 | 单项目 | 该子目录（`PROJECT_ROOT` 重指向它） |
-| 2+ 个 | **多项目** | 每个子项目目录各安装一份 `.ai-spec/`（详见 §1.5.1） |
+| `PROJECT_ROOT` 自身有项目证据 | 单项目或 monorepo | `PROJECT_ROOT` |
+| 0 个子项目，且 `PROJECT_ROOT` 自身无项目证据 | **新项目 Bootstrap** | 进入计划确认，不直接安装业务规则 |
+| 1 个子项目，且父目录无项目证据 | 单项目 | 该子目录（`PROJECT_ROOT` 重指向它） |
+| 2+ 个子项目，且父目录无项目证据 | **多项目** | 每个子项目目录各安装一份 `.ai-spec/`（详见 §1.5.1） |
 
 **迁移纠正**：若 `PROJECT_ROOT` 已存在 `.ai-spec/` 但检测到 1+ 个子项目目录，说明之前误装在父目录。删除父目录的 `.ai-spec/`，按上述路由重新安装到正确的子项目目录，并在完成报告中注明"已从父目录迁移至 N 个子项目"。
 
+### 新项目 Bootstrap 门禁
+
+当检测结果为“0 个子项目，且 `PROJECT_ROOT` 自身无项目证据”时，必须先读取 `workflows/new-project.md` 和 `workflows/project-planning.md`，进入只读规划阶段：
+
+1. 输出空项目启动报告，说明没有足够证据判断项目类型、技术栈、子项目边界和 Git 归属。
+2. 用最少问题向用户确认产品目标、单项目/多项目结构、每个子项目的名称、类型、阶段、预期技术栈和是否需要 Git。
+3. 根据用户回答输出完整项目接入计划，至少包含目录结构、每个子项目的 `.ai-spec` 安装位置、父目录是否只保留 `.specforge.json` 与轻量 AI 入口、Git 归属、首批命令、验收标准和回滚方式。
+4. 用户确认前，不得创建子目录、初始化 Git、生成子项目 `.ai-spec`、写 `ai-spec.yaml` 或把 `quick-ref.md` 改为 `GENERATED`。
+5. 用户确认后，按计划执行；若计划选择多子项目，父目录只作为 Bootstrap/索引入口，保留 `.specforge.json` 与轻量 AI 入口（`CLAUDE.md`、`AGENTS.md`、`.cursor/rules/ai-spec.mdc`、`.github/copilot-instructions.md` 或 `START-PROMPT.md`），业务规则落到各子项目。父目录 `.ai-spec` 必须等父级入口和全部子项目规范配置成功后再删除；若入口冲突或缺失，先保留并报告。
+6. 新项目的规范瘦身必须等 `docs/plans/project-plan.md` 创建并经用户确认后才生效；计划确认前保留完整规则基线，避免提前删除后续可能需要的技术栈、契约、安全、权限、数据库或 CI 规范。
+
 1. **创建接入分支**：
+   - Git 归属必须使用完成项目结构检测后的目标：单子项目在该子项目目录；多项目默认在各真实子项目目录；只有父目录本身是 monorepo/聚合工程或用户显式指定父级策略时，才在父目录创建 Git。
    - **无 Git 仓库**：允许一次**受控例外**：先执行 `git init && git add -A && git commit -m "chore: initial commit"` 形成初始基线 commit，然后从该基线创建 `chore/specforge-onboard`。此 commit 只能发生在接入前、只包含接入前已有项目文件，不得把 `.ai-spec/` 接入改动混入初始基线。
    - **有 Git 仓库**：直接从当前 HEAD 创建 `chore/specforge-onboard`（或用户指定名）。
-   所有接入改动落在此分支；主分支保持干净，回退只需 `git checkout 主分支` 或删除分支。
+    所有接入改动落在此分支；主分支保持干净，回退只需 `git checkout 主分支` 或删除分支。
+   - **远端操作默认禁止自动执行**：`git remote add`、创建远端仓库、`git push`、设置 upstream、保护分支或邀请协作者，必须由用户明确授权，并确认远端地址/仓库名、可见性、目标分支、凭证来源和是否推送当前分支。没有这些确认时，只输出待执行命令，不执行。
+   - **提交门禁**：除无 Git 仓库接入前的初始基线 commit 外，AI 不得自动 commit 接入改动；用户要求提交时，必须先运行 `scripts/git-preflight.ps1` 或等价提交前扫描，并展示 `git status --short`、待提交文件范围、被过滤文件、提交信息和验证结果。用户要求推送远端时，必须再次确认 remote/upstream 和推送分支；扫描未通过禁止提交/推送。
+   - **默认提交范围**：远端提交默认只处理有代码变更的子仓；父目录 `.specforge.json`、父级 Bootstrap 规则和父级索引不默认提交/推送，只在报告中告知用户可单独确认。提交前必须过滤 `.env*`、真实凭证、IDE 本地配置、本机路径配置、日志、缓存、构建产物、依赖目录和临时文件；只提交源码、测试、必要项目文档、锁文件、构建/CI 配置及已确认版本化的子仓规则。
 2. **同步规范文件到 `.ai-spec/`**：
    - 缺失文件直接复制
    - 已存在文件按内容差异覆盖规范正文：`core/`、`contracts/`、`stacks/`、`skills/`、`governance/`、`workflows/`、`adapters/`、`AI-START.md`、`README.md`
    - **Sync 永不覆盖**：模板同步场景不得覆盖项目自己的 `ai-spec.yaml`、AI 工具入口（`CLAUDE.md`、`AGENTS.md`、`.cursor/rules/`、`.github/copilot-instructions.md` 等）。首次接入必须由 AI 扫描代码、构建、依赖、文档后生成/更新 `ai-spec.yaml`；后续用户明确要求时 AI 可修改该文件并在交付中列出差异。
+   - **父目录更新**：用户要求“更新规范 / 从 GitHub 拉取规范 / 同步 SpecForge”时，不按首次接入处理，不重新全量扫描业务项目。若父目录存在 `.specforge.json` 和最新 `.ai-spec/scripts/install.ps1`，先执行 `-Sync` dry-run，确认后再 `-Sync -Apply`；只同步模板规范和缺失父级轻量入口，保留项目事实、业务文件、计划、交接和已有 AI 入口。
 3. **只读业务扫描 + 实时建模**（不改代码）：扫描代码、构建清单、Git 历史、现有文档，**实时填充**：
    - `.ai-spec/business/project-map.md`：一句话定位 + 核心域 + 主要入口 + 外部集成 + 已知风险
    - `.ai-spec/business/business-rules.md`：按章节填充业务规则，每条带来源 / 可靠度 / 冲突标记（详见 §1.6）。新项目无代码可扫时，由用户口述 AI 起草。
    - `.ai-spec/business/quick-ref.md`：从已填充的 `business-rules.md` 浓缩生成（最多 40 行），只保留核心域、关键状态机、关键不变量和 KPI 摘要；将 `status` 改为 `GENERATED`，同步 `ai-spec.yaml` 的 `quickRefStatus`。文件中的动态上下文门禁和计划自动触发门禁不得删除；`outputLanguage: zh-CN` 语言门禁不得删除，`maintenanceDue` 维护门禁也不得删除。
    - **章节裁剪规则**（写入 `business-rules.md` 时自动执行）：只生成实际适用的章节。无组织概念（无用户/租户/部门）→ 跳过三；无 KPI/报表/统计 → 跳过四；无有状态实体 → 跳过五；无管理端/后台 → 跳过七；无外部数据接入 → 跳过九。章节一、二、六、八、十为必填基础。
 4. **规范瘦身**（只删 `.ai-spec/` 内的规范模板文件，**绝不触碰项目业务代码、配置、依赖、迁移、CI/CD**；基于扫描结果删除无关文件，宁可少不可乱）：
+   - 新项目（`stage: new`）必须先完成并落盘 `docs/plans/project-plan.md`，再按总计划执行瘦身；没有总计划时只允许复制完整规则基线，不删规范文件。
+   - 老项目和开发中项目按真实代码、构建、依赖、文档和项目类型信号正常瘦身。
 
    **永不删**（核心，删了规范就废了）：
    - `AI-START.md`、`README.md`、`ai-spec.yaml`
@@ -106,7 +127,7 @@ AI 首先扫描 `PROJECT_ROOT` 的直接子目录，判断是单项目还是多�
 
 5. **绝对禁止**：
    - 修改、删除、移动**任何项目业务代码、配置、依赖、迁移、CI/CD 文件**（规范瘦身只作用于 `.ai-spec/` 内部）
-   - `git commit` / `git push`（唯一受控例外：无 Git 仓库接入时的初始基线 commit；接入 `.ai-spec/` 之后仍禁止 commit/push）
+   - 未经用户明确授权执行 `git commit` / `git push` / `git remote add` / 创建远端仓库（唯一受控例外：无 Git 仓库接入时的初始基线 commit；接入 `.ai-spec/` 之后仍禁止自动 commit/push）
    - 覆盖任何"永不覆盖"清单中的文件
    - 删除任何"永不删"清单中的文件
 6. **完成报告**（5-8 行，越长越失败）：
@@ -242,7 +263,7 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
   建议操作：添加至 `.gitignore`、生成 `config.example` 占位模板、迁移至环境变量、密钥轮换。
   风险等级：`高`（已提交至 Git 或硬编码在源码） / `中`（存在于本地未跟踪文件但可被工具读取） / `低`（已正确排除但提醒复查）。
 - 不覆盖用户未提交改动，不使用破坏性 Git 或文件命令清理现场。
-- **Git 提交硬性门禁**：在用户明确要求提交前，暂存区必须检查；只提交纯代码（源码、测试、迁移、锁文件、文档），必须过滤配置文件（`.env` / IDE 配置 / 本地设置 / 构建产物 / 真实凭证）。CI 配置文件可作为特例提交，但不得含密钥。
+- **Git 提交硬性门禁**：在用户明确要求提交前，必须运行 `scripts/git-preflight.ps1` 或等价提交前扫描，暂存区必须检查，并逐项核对待提交文件；只提交纯代码（源码、测试、迁移、锁文件、文档），必须过滤配置文件（`.env` / IDE 配置 / 本地设置 / 构建产物 / 真实凭证）。CI 配置文件可作为特例提交，但不得含密钥；扫描未通过禁止提交和推送。
 - 不操作生产环境、生产数据库、真实付费资源或真实用户通信，除非用户明确授权并确认影响范围。
 - 不绕过认证、授权、数据隔离和审计逻辑以换取“先跑通”。
 - 不在未验证时声称完成，不用 mock 结果冒充真实联调。

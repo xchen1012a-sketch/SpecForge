@@ -3,7 +3,8 @@ param(
     [string]$TargetRoot,
     [switch]$Apply,
     [string]$Repository = 'https://github.com/xchen1012a-sketch/SpecForge.git',
-    [string]$SourceRoot
+    [string]$SourceRoot,
+    [string[]]$Tools = @('claude-code', 'codex', 'cursor', 'github-copilot', 'generic')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,6 +45,7 @@ try {
     $syncParameters = @{
         TargetRoot = $resolvedTarget
         Sync = $true
+        Tools = $Tools
     }
     if ($Apply) { $syncParameters.Apply = $true }
     & $installer @syncParameters

@@ -106,6 +106,7 @@ AI/LLM 项目还必须读取 `stacks/ai-llm-app.md`：不可信用户输入与�
 - **不**执行 `rm -rf` 关键目录
 - **Git 提交硬性门禁**：暂存区必须检查，不能直接 `git add -A` 后无差别提交；必须逐项确认进入 commit 的文件。
 - **不**把临时文件 / IDE 配置 / `.env*` commit 进 git（`.gitignore` 必须配齐）
+- **提交前扫描**：任何 commit/push 前必须运行 `scripts/git-preflight.ps1` 或等价扫描，检查待提交文件、`.env*`、真实密钥/Token、IDE 本地配置、本机路径配置、日志、缓存、构建产物、依赖目录和临时文件；扫描失败禁止提交/推送。
 - **提交前过滤**：暂存区检查，排除配置文件（`.env` / IDE 配置 / 本地设置 / 构建产物），只提交纯代码（源码、测试、迁移、锁文件、文档）；CI 配置文件可作为特例提交，但不得含密钥
 - **`git pull` 行为**：`git pull` = `git fetch` + `git merge`，默认将远程最新提交与本地最新提交合并；有冲突时 Git 标记冲突文件，需手动解决后提交 merge commit。可改用 `git pull --rebase` 将本地提交变基到远程最新之上，保持线性历史
 

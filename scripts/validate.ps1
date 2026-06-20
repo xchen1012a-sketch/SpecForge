@@ -1,9 +1,163 @@
+[CmdletBinding()]
+param(
+    [switch]$SelfTest
+)
+
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $testScript = Join-Path $root 'tests\template.tests.ps1'
 $installTestScript = Join-Path $root 'tests\install.tests.ps1'
 $skillTestScript = Join-Path $root 'tests\skills.tests.ps1'
+$script:doctorFailures = 0
+
+function Get-SpecForgeTemplateVersion {
+    param([string]$SpecRoot)
+
+    $examplePath = Join-Path $SpecRoot 'ai-spec.example.yaml'
+    if (-not (Test-Path -LiteralPath $examplePath -PathType Leaf)) { return $null }
+    $content = Get-Content -Raw -Encoding UTF8 -LiteralPath $examplePath
+    $match = [regex]::Match($content, '(?m)^  templateVersion:\s*(\d+)')
+    if ($match.Success) { return [int]$match.Groups[1].Value }
+    return $null
+}
+
+function Get-InstalledTemplateVersion {
+    param([string]$SpecRoot)
+
+    $profilePath = Join-Path $SpecRoot 'ai-spec.yaml'
+    if (-not (Test-Path -LiteralPath $profilePath -PathType Leaf)) { return $null }
+    $content = Get-Content -Raw -Encoding UTF8 -LiteralPath $profilePath
+    $match = [regex]::Match($content, '(?m)^  templateVersion:\s*(\d+)')
+    if ($match.Success) { return [int]$match.Groups[1].Value }
+    return $null
+}
+
+function Write-DoctorLine {
+    param(
+        [ValidateSet('OK', 'WARN', 'FAIL')]
+        [string]$Status,
+        [string]$Message
+    )
+
+    $color = switch ($Status) {
+        'OK' { 'Green' }
+        'WARN' { 'Yellow' }
+        'FAIL' { 'Red' }
+    }
+    if ($Status -eq 'FAIL') { $script:doctorFailures++ }
+    Write-Host "[$Status] $Message" -ForegroundColor $color
+}
+
+function Test-GitDoctor {
+    param([string]$ProjectRoot, [string]$Label)
+
+    if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot '.git') -PathType Container)) {
+        Write-DoctorLine -Status 'WARN' -Message "$Label has no .git repository."
+        return
+    }
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        Write-DoctorLine -Status 'WARN' -Message 'git command is unavailable; skipped git status.'
+        return
+    }
+
+    $status = @(& git -C $ProjectRoot status --porcelain 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        Write-DoctorLine -Status 'WARN' -Message "$Label git status failed."
+        return
+    }
+    if ($status.Count -gt 0) {
+        Write-DoctorLine -Status 'WARN' -Message "$Label has uncommitted changes: $($status.Count)."
+    }
+    else {
+        Write-DoctorLine -Status 'OK' -Message "$Label git working tree is clean."
+    }
+}
+
+function Test-SpecBasics {
+    param([string]$SpecRoot, [string]$Label, [int]$TemplateVersion)
+
+    foreach ($requiredPath in @('AI-START.md', 'README.md')) {
+        if (Test-Path -LiteralPath (Join-Path $SpecRoot $requiredPath) -PathType Leaf) {
+            Write-DoctorLine -Status 'OK' -Message "$Label has $requiredPath."
+        }
+        else {
+            Write-DoctorLine -Status 'FAIL' -Message "$Label missing $requiredPath."
+        }
+    }
+
+    $installedVersion = Get-InstalledTemplateVersion -SpecRoot $SpecRoot
+    if ($null -ne $installedVersion -and $null -ne $TemplateVersion) {
+        if ($installedVersion -lt $TemplateVersion) {
+            Write-DoctorLine -Status 'WARN' -Message "$Label templateVersion=$installedVersion, latest=$TemplateVersion; update recommended."
+        }
+        else {
+            Write-DoctorLine -Status 'OK' -Message "$Label templateVersion=$installedVersion."
+        }
+    }
+}
+
+function Invoke-SpecForgeDoctor {
+    param([string]$SpecRoot)
+
+    $projectRoot = Split-Path -Parent $SpecRoot
+    $templateVersion = Get-SpecForgeTemplateVersion -SpecRoot $SpecRoot
+    Write-Host ''
+    Write-Host 'SpecForge doctor:' -ForegroundColor Cyan
+    Write-DoctorLine -Status 'OK' -Message "specRoot=$SpecRoot"
+    Write-DoctorLine -Status 'OK' -Message "projectRoot=$projectRoot"
+
+    $indexPath = Join-Path $projectRoot '.specforge.json'
+    if (Test-Path -LiteralPath $indexPath -PathType Leaf) {
+        Write-DoctorLine -Status 'OK' -Message 'multi-project index found: .specforge.json.'
+        try {
+            $index = Get-Content -Raw -Encoding UTF8 -LiteralPath $indexPath | ConvertFrom-Json
+        }
+        catch {
+            Write-DoctorLine -Status 'FAIL' -Message '.specforge.json is not valid JSON.'
+            return
+        }
+
+        if ($null -ne $templateVersion -and $index.PSObject.Properties.Name -contains 'templateVersion') {
+            if ([int]$index.templateVersion -lt $templateVersion) {
+                Write-DoctorLine -Status 'WARN' -Message "parent index templateVersion=$($index.templateVersion), latest=$templateVersion; update recommended."
+            }
+            else {
+                Write-DoctorLine -Status 'OK' -Message "parent index templateVersion=$($index.templateVersion)."
+            }
+        }
+
+        $entryPaths = @('AGENTS.md', 'CLAUDE.md', '.cursor\rules\ai-spec.mdc', '.github\copilot-instructions.md', 'START-PROMPT.md')
+        $foundEntries = @($entryPaths | Where-Object { Test-Path -LiteralPath (Join-Path $projectRoot $_) -PathType Leaf })
+        if ($foundEntries.Count -gt 0) {
+            Write-DoctorLine -Status 'OK' -Message "parent lightweight entries: $($foundEntries -join ', ')."
+        }
+        else {
+            Write-DoctorLine -Status 'WARN' -Message 'no parent lightweight AI entry found.'
+        }
+
+        foreach ($project in @($index.projects)) {
+            $projectPath = [string]$project.path
+            if ([string]::IsNullOrWhiteSpace($projectPath)) { continue }
+            $childRoot = Join-Path $projectRoot $projectPath
+            $childSpec = Join-Path $childRoot '.ai-spec'
+            if (-not (Test-Path -LiteralPath $childRoot -PathType Container)) {
+                Write-DoctorLine -Status 'FAIL' -Message "child project missing: $projectPath."
+                continue
+            }
+            if (-not (Test-Path -LiteralPath $childSpec -PathType Container)) {
+                Write-DoctorLine -Status 'FAIL' -Message "child spec missing: $projectPath/.ai-spec."
+                continue
+            }
+            Test-SpecBasics -SpecRoot $childSpec -Label $projectPath -TemplateVersion $templateVersion
+            Test-GitDoctor -ProjectRoot $childRoot -Label $projectPath
+        }
+    }
+    else {
+        Test-SpecBasics -SpecRoot $SpecRoot -Label 'current project' -TemplateVersion $templateVersion
+        Test-GitDoctor -ProjectRoot $projectRoot -Label 'current project'
+    }
+}
 
 $isTemplateRepository = (Test-Path -LiteralPath $testScript -PathType Leaf) -and
     (Test-Path -LiteralPath $installTestScript -PathType Leaf) -and
@@ -11,10 +165,60 @@ $isTemplateRepository = (Test-Path -LiteralPath $testScript -PathType Leaf) -and
 
 if ($isTemplateRepository) {
     & $testScript
-    & $installTestScript
-    & $skillTestScript
+    if ($SelfTest) {
+        & $installTestScript
+        & $skillTestScript
+    }
 }
 else {
+    $projectRootForValidation = Split-Path -Parent $root
+    $parentIndexPath = Join-Path $projectRootForValidation '.specforge.json'
+    if (Test-Path -LiteralPath $parentIndexPath -PathType Leaf) {
+        foreach ($requiredPath in @(
+            'AI-START.md',
+            'README.md',
+            'scripts\update.ps1',
+            'scripts\update.cmd',
+            'scripts\update.sh',
+            'scripts\validate.ps1'
+        )) {
+            if (-not (Test-Path -LiteralPath (Join-Path $root $requiredPath))) {
+                throw "Missing parent update source file: $requiredPath"
+            }
+        }
+
+        try {
+            $parentIndex = Get-Content -Raw -Encoding UTF8 -LiteralPath $parentIndexPath | ConvertFrom-Json
+        }
+        catch {
+            throw '.specforge.json is not valid JSON.'
+        }
+
+        if (-not $parentIndex.projects -or @($parentIndex.projects).Count -eq 0) {
+            throw '.specforge.json has no projects.'
+        }
+
+        foreach ($project in @($parentIndex.projects)) {
+            $projectPath = [string]$project.path
+            if ([string]::IsNullOrWhiteSpace($projectPath)) {
+                throw '.specforge.json contains a project without path.'
+            }
+            $childSpecRoot = Join-Path (Join-Path $projectRootForValidation $projectPath) '.ai-spec'
+            foreach ($requiredPath in @(
+                'AI-START.md',
+                'ai-spec.yaml',
+                'business\quick-ref.md',
+                'scripts\validate.ps1'
+            )) {
+                if (-not (Test-Path -LiteralPath (Join-Path $childSpecRoot $requiredPath) -PathType Leaf)) {
+                    throw "Missing child spec file: $projectPath/.ai-spec/$requiredPath"
+                }
+            }
+        }
+
+        Write-Host 'Multi-project parent validation passed.' -ForegroundColor Green
+    }
+    else {
     foreach ($requiredPath in @(
         'AI-START.md',
         'README.md',
@@ -165,7 +369,8 @@ else {
             }
         }
     }
-    Write-Host 'Installed spec structure validation passed.' -ForegroundColor Green
+        Write-Host 'Installed spec structure validation passed.' -ForegroundColor Green
+    }
 }
 
 $settingsPath = Join-Path $root 'adapters\claude-code\settings.json.template'
@@ -218,6 +423,11 @@ if ($brokenLinks.Count -gt 0) {
     Write-Host 'Broken local Markdown links:' -ForegroundColor Red
     foreach ($link in $brokenLinks) { Write-Host "- $link" -ForegroundColor Red }
     exit 1
+}
+
+Invoke-SpecForgeDoctor -SpecRoot $root
+if ($script:doctorFailures -gt 0) {
+    throw "SpecForge doctor found $script:doctorFailures blocking issue(s)."
 }
 
 Write-Host 'Structure, policy, skill, JSON, and Markdown link validation passed.' -ForegroundColor Green
