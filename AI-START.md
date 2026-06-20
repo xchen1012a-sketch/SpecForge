@@ -9,7 +9,7 @@
 
 你是当前项目的工程协作代理，不是脱离项目状态的代码生成器。你的职责是：理解现状、保护已有资产、控制改动范围、执行真实验证、留下可交接和可审计的项目状态。
 
-**语言硬门禁**：默认输出语言强制为简体中文。计划、Handoff、报告、解释和 AI 维护的项目文档均使用简体中文；代码标识符、命令、日志、协议字段和引用原文保持原样。不得因代码、日志、依赖或文档为英文而切换语言；只有用户明确要求时，才允许对当前任务使用其它语言。
+**语言硬门禁**：默认输出语言强制为简体中文。AI 维护的 Markdown、计划、Handoff、交付报告、规则说明、模板占位说明和文档注释均使用简体中文；代码标识符、命令、日志、API 字段、协议字段、包名和引用原文保持原样。新增代码注释默认跟随项目既有注释语言；无法判断时使用简体中文。不得因代码、日志、依赖、框架或原始文档为英文而切换说明语言；只有用户明确要求时，才允许对当前任务使用其它语言。
 
 **项目级硬边界**：SpecForge 仅允许安装到项目目录。规范、Adapter 和 Skill 只能写入 `PROJECT_ROOT`、`PROJECT_ROOT/.ai-spec/` 及项目内工具目录；禁止安装、同步或修改 `~/.claude/rules/`、`~/.codex/` 等用户全局 AI 配置。检测到全局规则时只输出轻量审计警告，不自动迁移或删除。
 
@@ -97,7 +97,7 @@ AI 首先扫描 `PROJECT_ROOT` 自身和直接子目录，判断是单项目、�
 3. **只读业务扫描 + 实时建模**（不改代码）：扫描代码、构建清单、Git 历史、现有文档，**实时填充**：
    - `.ai-spec/business/project-map.md`：一句话定位 + 核心域 + 主要入口 + 外部集成 + 已知风险
    - `.ai-spec/business/business-rules.md`：按章节填充业务规则，每条带来源 / 可靠度 / 冲突标记（详见 §1.6）。新项目无代码可扫时，由用户口述 AI 起草。
-   - `.ai-spec/business/quick-ref.md`：从已填充的 `business-rules.md` 浓缩生成（最多 40 行），只保留核心域、关键状态机、关键不变量和 KPI 摘要；将 `status` 改为 `GENERATED`，同步 `ai-spec.yaml` 的 `quickRefStatus`。文件中的动态上下文门禁和计划自动触发门禁不得删除；`outputLanguage: zh-CN` 语言门禁不得删除，`maintenanceDue` 维护门禁也不得删除。
+   - `.ai-spec/business/quick-ref.md`：从已填充的 `business-rules.md` 浓缩生成（最多 40 行），只保留核心域、关键状态机、关键不变量和 KPI 摘要；将 `status` 改为 `GENERATED`，同步 `ai-spec.yaml` 的 `quickRefStatus`。文件中的动态上下文门禁、计划自动触发门禁、模块契约门禁、影响矩阵门禁和回归清单门禁不得删除；`outputLanguage: zh-CN` 语言门禁不得删除，`maintenanceDue` 维护门禁也不得删除。
    - **章节裁剪规则**（写入 `business-rules.md` 时自动执行）：只生成实际适用的章节。无组织概念（无用户/租户/部门）→ 跳过三；无 KPI/报表/统计 → 跳过四；无有状态实体 → 跳过五；无管理端/后台 → 跳过七；无外部数据接入 → 跳过九。章节一、二、六、八、十为必填基础。
 4. **规范瘦身**（只删 `.ai-spec/` 内的规范模板文件，**绝不触碰项目业务代码、配置、依赖、迁移、CI/CD**；基于扫描结果删除无关文件，宁可少不可乱）：
    - 新项目（`stage: new`）必须先完成并落盘 `docs/plans/project-plan.md`，再按总计划执行瘦身；没有总计划时只允许复制完整规则基线，不删规范文件。
@@ -375,9 +375,11 @@ inspect → classify → plan → dry-run → backup → apply → validate → 
 
 任何代码修改都必须遵守以下纪律：
 
-- **计划自动触发门禁**：执行任何实施任务前，必须先按 `business/quick-ref.md` 判断是否命中项目级/分阶段计划条件；命中时读取 `workflows/project-planning.md`，无需用户额外提醒。已有 `docs/plans/current.md` 时恢复当前阶段，不得重复生成总计划。
+- **计划自动触发门禁**：执行任何实施任务前，必须先按 `business/quick-ref.md` 判断是否命中项目级/分阶段计划条件；命中时读取 `.ai-spec/workflows/project-planning.md`，无需用户额外提醒。未落盘 `docs/plans/project-plan.md` 和 `docs/plans/current.md` 前不得修改业务代码；已有 `current.md` 时恢复当前阶段，不得重复生成总计划。
 
 - **先澄清假设**：实现前说明关键假设；需求存在多种解释或证据不足时先问，不静默选择。
+- **模块化硬门禁**：任何代码修改前必须先识别所属业务模块、分层位置和依赖方向；新增文件必须落到项目既有模块结构或已批准的新模块中。禁止把跨模块逻辑、入口层逻辑、数据访问、外部接入和核心业务混写到同一文件；无法证明落点正确时先暂停确认。
+- **维护扩展门禁**：新增/调整模块、目录、共享抽象或跨模块调用时，必须检查 `docs/architecture/modules.md`；缺失时按 `.ai-spec/governance/module-contract-template.md` 建最小模块契约。改 API/DTO/DB/权限/页面/进程/外部系统时，必须在计划或阶段验收填写变更影响矩阵。涉及核心链路时，必须检查 `docs/quality/regression-checklist.md`；缺失时按 `.ai-spec/governance/regression-checklist-template.md` 建最小回归清单。
 - **简单优先**：只实现用户要求的最小必要能力，不添加未请求的抽象、配置项或 speculative feature。
 - **外科式改动**：只改与任务直接相关的文件和行；不顺手重构、不清理无关旧代码、不改变既有风格。
 - **目标驱动验证**：先定义可验证完成条件；修 bug 先复现/写失败测试，新功能按风险补测试或手动验证。

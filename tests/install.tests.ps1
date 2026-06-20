@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $installer = Join-Path $root 'scripts\install.ps1'
@@ -165,9 +165,15 @@ try {
     Assert-Test ($frontendQuickRef.Contains('outputLanguage: zh-CN')) 'Installed quick-ref missing Simplified Chinese output lock'
     Assert-Test ($frontendQuickRef -match 'maintenanceDue: \d{4}-\d{2}-\d{2}') 'Installed quick-ref missing concrete maintenance due date'
     Assert-Test ($frontendQuickRef.Contains('250')) 'Installed quick-ref missing large-file chunk budget'
-    Assert-Test ($frontendQuickRef.Contains('Planning auto-trigger gate')) 'Installed quick-ref missing automatic planning gate'
-    Assert-Test ($frontendQuickRef.Contains('workflows/project-planning.md')) 'Installed quick-ref missing project planning workflow route'
+    Assert-Test ($frontendQuickRef.Contains('计划自动触发门禁')) 'Installed quick-ref missing automatic planning gate'
+    Assert-Test ($frontendQuickRef.Contains('.ai-spec/workflows/project-planning.md')) 'Installed quick-ref missing project planning workflow route'
+    Assert-Test ($frontendQuickRef.Contains('docs/plans/project-plan.md')) 'Installed quick-ref missing persisted project plan gate'
     Assert-Test ($frontendQuickRef.Contains('docs/plans/current.md')) 'Installed quick-ref missing current plan resume route'
+    Assert-Test ($frontendQuickRef.Contains('module-contract-template.md')) 'Installed quick-ref missing module contract gate'
+    Assert-Test ($frontendQuickRef.Contains('regression-checklist-template.md')) 'Installed quick-ref missing regression checklist gate'
+    Assert-Test ($frontendQuickRef.Contains('影响矩阵')) 'Installed quick-ref missing impact matrix gate'
+    Assert-Test ($frontendQuickRef.Contains('待填充')) 'Installed quick-ref should use Chinese placeholders'
+    Assert-Test (-not $frontendQuickRef.Contains('Planning auto-trigger gate')) 'Installed quick-ref should not generate English planning headings'
     Assert-Test (@($frontendQuickRef -split "`r?`n").Count -le 40) 'Installed quick-ref exceeds the 40-line token budget'
 
     $frontendRules = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $frontend '.ai-spec\business\business-rules.md')
@@ -239,7 +245,7 @@ try {
     try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $semanticQuickRefFailed = $true; $semanticQuickRefError = $_.Exception.Message }
     Assert-Test ($semanticQuickRefFailed -and $semanticQuickRefError.Contains('Generated quick-ref still contains placeholder content')) 'Generated quick-ref accepted placeholder facts'
 
-    $semanticQuickRef = $semanticQuickRef -replace '(?m)^- TBD:.*$', '- provider-routing: confirmed'
+    $semanticQuickRef = $semanticQuickRef -replace '(?m)^- 待填充.*$', '- provider-routing: confirmed'
     [System.IO.File]::WriteAllText($frontendQuickRefPath, $semanticQuickRef, [System.Text.UTF8Encoding]::new($false))
     $semanticRulesFailed = $false
     $semanticRulesError = ''
@@ -250,7 +256,7 @@ try {
     $semanticMapPath = Join-Path $frontend '.ai-spec\business\project-map.md'
     $semanticRulesOriginal = Get-Content -Raw -Encoding UTF8 -LiteralPath $semanticRulesPath
     $semanticMapOriginal = Get-Content -Raw -Encoding UTF8 -LiteralPath $semanticMapPath
-    [System.IO.File]::WriteAllText($semanticRulesPath, $semanticRulesOriginal.Replace('TBD', 'confirmed'), [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($semanticRulesPath, $semanticRulesOriginal.Replace('待填充', '已确认'), [System.Text.UTF8Encoding]::new($false))
     $semanticEvidenceFailed = $false
     $semanticEvidenceError = ''
     try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $semanticEvidenceFailed = $true; $semanticEvidenceError = $_.Exception.Message }
@@ -258,7 +264,7 @@ try {
 
     $sourceMarker = -join (@(0x6765, 0x6E90) | ForEach-Object { [char]$_ })
     $reliabilityMarker = -join (@(0x53EF, 0x9760, 0x5EA6) | ForEach-Object { [char]$_ })
-    [System.IO.File]::WriteAllText($semanticRulesPath, ($semanticRulesOriginal.Replace('TBD', 'confirmed') + "`n- Provider routing is explicit. [$sourceMarker`: code] [$reliabilityMarker`: high]`n"), [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($semanticRulesPath, ($semanticRulesOriginal.Replace('待填充', '已确认') + "`n- Provider routing is explicit. [$sourceMarker`: code] [$reliabilityMarker`: high]`n"), [System.Text.UTF8Encoding]::new($false))
     $semanticMapFailed = $false
     $semanticMapError = ''
     try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $semanticMapFailed = $true; $semanticMapError = $_.Exception.Message }
@@ -283,7 +289,7 @@ try {
     Assert-Test $statusMismatchFailed 'Installed validate.ps1 did not reject quick-ref/ai-spec status drift'
     [System.IO.File]::WriteAllText($frontendQuickRefPath, $validQuickRef, [System.Text.UTF8Encoding]::new($false))
 
-    $quickRefWithoutPlanningGate = $validQuickRef -replace '(?ms)\r?\n## Planning auto-trigger gate.*?(?=\r?\n## Business facts)', ''
+    $quickRefWithoutPlanningGate = $validQuickRef -replace '(?ms)\r?\n## 实施硬门禁.*?(?=\r?\n## 业务事实)', ''
     [System.IO.File]::WriteAllText($frontendQuickRefPath, $quickRefWithoutPlanningGate, [System.Text.UTF8Encoding]::new($false))
     $missingPlanningGateFailed = $false
     try { & (Join-Path $frontend '.ai-spec\scripts\validate.ps1') *> $null } catch { $missingPlanningGateFailed = $true }

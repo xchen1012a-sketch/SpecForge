@@ -55,6 +55,8 @@ $requiredFiles = @(
     'governance/handoff-template.md',
     'governance/project-plan-template.md',
     'governance/phase-plan-template.md',
+    'governance/module-contract-template.md',
+    'governance/regression-checklist-template.md',
     'governance/ownership-template.md',
     'skills/product-architect/SKILL.md',
     'skills/dev-implementation/SKILL.md',
@@ -107,6 +109,8 @@ Assert-True ($start.Contains('只提交纯代码')) 'AI-START.md missing pure-co
 Assert-True ($start.Contains('暂存区必须检查')) 'AI-START.md missing staging-area check rule'
 Assert-True ($start.Contains('git-preflight.ps1')) 'AI-START.md missing git preflight scan rule'
 Assert-True ($start.Contains('先澄清假设')) 'AI-START.md missing clarify-assumptions coding discipline'
+Assert-True ($start.Contains('模块化硬门禁')) 'AI-START.md missing mandatory modular coding gate'
+Assert-True ($start.Contains('维护扩展门禁')) 'AI-START.md missing maintainability extension gate'
 Assert-True ($start.Contains('简单优先')) 'AI-START.md missing simplicity-first coding discipline'
 Assert-True ($start.Contains('外科式改动')) 'AI-START.md missing surgical-change coding discipline'
 Assert-True ($start.Contains('目标驱动验证')) 'AI-START.md missing goal-driven verification discipline'
@@ -146,15 +150,19 @@ Assert-True ($quickRef.Contains('计划自动触发门禁')) 'quick-ref.md missi
 Assert-True ($quickRef.Contains('workflows/project-planning.md')) 'quick-ref.md missing lazy planning workflow route'
 Assert-True ($quickRef.Contains('无需用户额外提醒')) 'quick-ref.md does not automatically activate planning'
 Assert-True ($quickRef.Contains('docs/plans/current.md')) 'quick-ref.md missing existing plan resume route'
+Assert-True ($quickRef.Contains('module-contract-template.md')) 'quick-ref.md missing module contract gate'
+Assert-True ($quickRef.Contains('regression-checklist-template.md')) 'quick-ref.md missing regression checklist gate'
+Assert-True ($quickRef.Contains('影响矩阵')) 'quick-ref.md missing impact matrix gate'
 Assert-True ($quickRef.Contains('outputLanguage: zh-CN')) 'quick-ref.md missing the lightweight language lock'
 Assert-True ($quickRef.Contains('maintenanceDue:')) 'quick-ref.md missing lightweight maintenance due marker'
 Assert-True ($quickRef.Contains('250')) 'quick-ref.md missing large-file chunk budget'
 Assert-True ($quickRefLines.Count -le 40) "quick-ref.md exceeds the 40-line token budget: $($quickRefLines.Count) lines"
-Assert-True ($start.Contains('计划自动触发门禁不得删除')) 'AI-START.md does not preserve the planning gate when quick-ref is generated'
+Assert-True ($start.Contains('计划自动触发门禁') -and $start.Contains('模块契约门禁') -and $start.Contains('回归清单门禁')) 'AI-START.md does not preserve implementation gates when quick-ref is generated'
 Assert-True ($start.Contains('先搜索并只读取命中的相关章节')) 'AI-START.md does not route business rules at section level'
 Assert-True ($start.Contains('按需读取不等于跳过适用规则')) 'AI-START.md allows token saving to weaken quality gates'
 Assert-True ($start.Contains('默认输出语言强制为简体中文')) 'AI-START.md missing the Simplified Chinese output lock'
-Assert-True ($start.Contains('不得因代码、日志、依赖或文档为英文而切换')) 'AI-START.md allows silent language switching'
+Assert-True ($start.Contains('不得因代码、日志、依赖、框架或原始文档为英文而切换')) 'AI-START.md allows silent language switching'
+Assert-True ($start.Contains('模板占位说明') -and $start.Contains('无法判断时使用简体中文')) 'AI-START.md does not force Chinese for maintained docs and new comments'
 Assert-True ($start.Contains('outputLanguage: zh-CN') -and $start.Contains('语言门禁不得删除')) 'AI-START.md does not preserve the language lock when regenerating quick-ref'
 
 foreach ($lite in @('core-lite/delivery-lite.md', 'core-lite/security-lite.md', 'core-lite/testing-lite.md')) {
@@ -189,6 +197,11 @@ Assert-True ($aiWorkflow.Contains('status: GENERATED')) 'AI handoff workflow doe
 Assert-True ($aiWorkflow.Contains('AI-START.md')) 'AI handoff workflow missing onboarding/audit fallback'
 Assert-True ($aiWorkflow.Contains('docs/plans/current.md')) 'AI handoff workflow missing current plan recovery'
 
+$architectureStandard = Read-ProjectFile 'core/architecture.md'
+foreach ($rule in @('模块化代码是实施硬门禁', '代码落点（强约束）', '新增文件必须落到项目既有模块结构', '入口层只处理协议', '基础设施/适配器层', '模块契约触发', 'docs/architecture/modules.md')) {
+    Assert-True ($architectureStandard.Contains($rule)) "architecture standard missing modular gate: $rule"
+}
+
 $planningWorkflow = Read-ProjectFile 'workflows/project-planning.md'
 Assert-True ($planningWorkflow.Contains('docs/plans/project-plan.md')) 'planning workflow missing persistent project plan path'
 Assert-True ($planningWorkflow.Contains('docs/plans/current.md')) 'planning workflow missing lightweight current plan entry'
@@ -199,6 +212,9 @@ Assert-True ($planningWorkflow.Contains('用户确认执行')) 'planning workflo
 Assert-True ($planningWorkflow.Contains('只读取 `docs/plans/current.md`')) 'planning workflow does not protect daily token usage'
 Assert-True ($planningWorkflow.Contains('实施前自动判定')) 'planning workflow missing mandatory automatic trigger'
 Assert-True ($planningWorkflow.Contains('无需用户额外提醒')) 'planning workflow relies on the user to request planning'
+foreach ($rule in @('计划分层', '已证实事实', '未证实假设', '模块职责、代码落点、依赖方向', '模块化自检结果', '变更影响矩阵', 'docs/quality/regression-checklist.md', 'docs/plans/decisions.md', '安全评审点', '测试层级矩阵', '页面地址', '停止条件', 'Definition of Done', '计划变更记录')) {
+    Assert-True ($planningWorkflow.Contains($rule)) "planning workflow missing quality gate: $rule"
+}
 
 $maintenanceWorkflow = Read-ProjectFile 'workflows/context-maintenance.md'
 foreach ($rule in @('惰性触发', 'safe-only', '先检查行数、状态和修改时间', '禁止机械截断', 'active', 'blocked', '验收证据', '250 行', '可回滚')) {
@@ -211,10 +227,23 @@ $projectPlanTemplate = Read-ProjectFile 'governance/project-plan-template.md'
 Assert-True ($projectPlanTemplate.Contains('项目总计划')) 'project plan template missing title'
 Assert-True ($projectPlanTemplate.Contains('阶段索引')) 'project plan template missing phase index'
 Assert-True ($projectPlanTemplate.Contains('总体验收标准')) 'project plan template missing overall acceptance criteria'
+foreach ($section in @('已证实事实', '未证实假设', '待用户确认问题', '模块职责与代码落点', '依赖方向与跨模块访问规则', '关键决策记录', '变更影响矩阵', '测试矩阵与验证命令', '项目级 Definition of Done', '计划变更记录')) {
+    Assert-True ($projectPlanTemplate.Contains($section)) "project plan template missing section: $section"
+}
 
 $phasePlanTemplate = Read-ProjectFile 'governance/phase-plan-template.md'
-foreach ($section in @('阶段目标', '实施范围', '任务顺序', '验收标准', '验证命令', '风险与回滚', '完成状态')) {
+foreach ($section in @('阶段目标', '实施范围', '依赖与前置条件', '模块归属与分层落点', '代码落点与职责边界', '依赖方向与跨模块访问', '模块化自检结果', '变更影响矩阵', '回归清单验证结果', '安全评审点', '测试层级矩阵', 'UI/人工验收', '任务顺序', '验收标准', '验证命令', '风险与回滚', '完成状态', 'current.md 推进结果')) {
     Assert-True ($phasePlanTemplate.Contains($section)) "phase plan template missing section: $section"
+}
+
+$moduleContractTemplate = Read-ProjectFile 'governance/module-contract-template.md'
+foreach ($section in @('模块契约清单', '职责', '对外能力/API', '拥有数据', '禁止访问', '跨模块访问')) {
+    Assert-True ($moduleContractTemplate.Contains($section)) "module contract template missing section: $section"
+}
+
+$regressionChecklistTemplate = Read-ProjectFile 'governance/regression-checklist-template.md'
+foreach ($section in @('项目回归清单', '核心链路', '边界与错误态', '权限不足', '重复提交/并发')) {
+    Assert-True ($regressionChecklistTemplate.Contains($section)) "regression checklist template missing section: $section"
 }
 
 $multiProjectWorkflow = Read-ProjectFile 'workflows/multi-project-onboard.md'
@@ -433,6 +462,8 @@ Assert-True ($devImplementationSkill.Contains('计划自动触发门禁')) 'dev 
 Assert-True ($devImplementationSkill.Contains('business/quick-ref.md')) 'dev implementation skill forces the full startup document'
 Assert-True ($devImplementationSkill.Contains('docs/plans/current.md')) 'dev implementation skill does not follow the active development plan'
 Assert-True ($devImplementationSkill.Contains('相关章节')) 'dev implementation skill loads all business rules instead of relevant sections'
+Assert-True ($devImplementationSkill.Contains('模块落点') -and $devImplementationSkill.Contains('跨模块直接读写')) 'dev implementation skill missing modular implementation gate'
+Assert-True ($devImplementationSkill.Contains('module-contract-template.md') -and $devImplementationSkill.Contains('regression-checklist-template.md')) 'dev implementation skill missing maintainability templates'
 
 $specEvaluatorSkill = Read-ProjectFile 'skills/spec-evaluator/SKILL.md'
 Assert-True ($specEvaluatorSkill.Contains('证据不足封顶')) 'spec evaluator missing insufficient-evidence score caps'
@@ -444,7 +475,7 @@ $productArchitectSkill = Read-ProjectFile 'skills/product-architect/SKILL.md'
 Assert-True ($productArchitectSkill.Contains('business/quick-ref.md')) 'product architect skill forces the full startup document'
 Assert-True ($productArchitectSkill.Contains('GENERATED')) 'product architect skill does not use the lightweight readiness gate'
 
-foreach ($validatorRule in @('Missing spec.scope: project-only', 'Generated quick-ref still contains placeholder content', 'Generated business rules still contain placeholder content', 'Generated business rules lack source/reliability evidence markers', 'Generated project map still contains placeholder content', 'Missing ai.outputLanguage.default: zh-CN', 'Missing ai.outputLanguage.locked: true', 'Quick-ref exceeds 40 lines', 'Quick-ref status mismatch', 'planning auto-trigger gate', 'Stale AI adapter', 'Current plan exceeds 80 lines', 'Completed phase lacks acceptance evidence')) {
+foreach ($validatorRule in @('Missing spec.scope: project-only', 'Generated quick-ref still contains placeholder content', 'Generated business rules still contain placeholder content', 'Generated business rules lack source/reliability evidence markers', 'Generated project map still contains placeholder content', 'Missing ai.outputLanguage.default: zh-CN', 'Missing ai.outputLanguage.locked: true', 'Quick-ref exceeds 40 lines', 'Quick-ref status mismatch', 'planning auto-trigger gate', 'maintainability implementation gates', 'Stale AI adapter', 'Current plan exceeds 80 lines', 'Completed phase lacks acceptance evidence')) {
     Assert-True ($validateScript.Contains($validatorRule)) "validate.ps1 missing runtime drift check: $validatorRule"
 }
 

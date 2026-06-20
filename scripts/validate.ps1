@@ -61,9 +61,17 @@ function Test-GitDoctor {
         return
     }
 
-    $status = @(& git -C $ProjectRoot status --porcelain 2>$null)
-    if ($LASTEXITCODE -ne 0) {
-        Write-DoctorLine -Status 'WARN' -Message "$Label git status failed."
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $status = @(& git -C $ProjectRoot status --porcelain 2>$null)
+        $gitExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($gitExitCode -ne 0) {
+        Write-DoctorLine -Status 'WARN' -Message "$Label git status failed or .git is invalid."
         return
     }
     if ($status.Count -gt 0) {
@@ -325,8 +333,11 @@ else {
             throw 'Generated project map still contains placeholder content.'
         }
     }
-    if (-not $quickRefContent.Contains('workflows/project-planning.md') -or -not $quickRefContent.Contains('docs/plans/current.md')) {
+    if (-not $quickRefContent.Contains('.ai-spec/workflows/project-planning.md') -or -not $quickRefContent.Contains('docs/plans/current.md') -or -not $quickRefContent.Contains('docs/plans/project-plan.md')) {
         throw 'Quick-ref is missing the planning auto-trigger gate.'
+    }
+    if (-not $quickRefContent.Contains('module-contract-template.md') -or -not $quickRefContent.Contains('regression-checklist-template.md') -or -not $quickRefContent.Contains('影响矩阵')) {
+        throw 'Quick-ref is missing maintainability implementation gates.'
     }
 
     $projectRoot = Split-Path -Parent $root
